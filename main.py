@@ -110,11 +110,11 @@ class PerkyBot:
         if query.data == 'stats':
             await self.show_stats(user_id, context)
         elif query.data == 'leaderboard':
-            await self.show_leaderboard(context)
+            await self.show_leaderboard(user_id, context)
         elif query.data == 'shop':
-            await self.show_shop(context)
+            await self.show_shop(user_id, context)
         elif query.data == 'help':
-            await self.show_help(context)
+            await self.show_help(user_id, context)
 
     async def show_stats(self, user_id, context):
         """Показує статистику користувача"""
@@ -135,7 +135,7 @@ class PerkyBot:
         )
         await context.bot.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
 
-    async def show_leaderboard(self, context):
+    async def show_leaderboard(self, user_id, context):
         """Показує таблицю лідерів"""
         with get_db_connection() as conn:
             cursor = conn.cursor()
@@ -146,23 +146,23 @@ class PerkyBot:
         for i, row in enumerate(leaderboard_data):
             message += f"**{i+1}.** {row['username']} - **{row['high_score']}** очок\n"
         
-        await context.bot.send_message(context.effective_user.id, message, parse_mode=ParseMode.MARKDOWN)
+        await context.bot.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
 
-    async def show_shop(self, context):
+    async def show_shop(self, user_id, context):
         """Показує магазин мерчу"""
         message = "🛒 **Магазин мерчу:**\n\n" \
                   "Тут ви можете придбати крутий мерч з Perky Coffee Jump!\n" \
                   "**(Функціонал у розробці)**"
-        await context.bot.send_message(context.effective_user.id, message, parse_mode=ParseMode.MARKDOWN)
+        await context.bot.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
 
-    async def show_help(self, context):
+    async def show_help(self, user_id, context):
         """Показує інструкції з гри"""
         message = "❓ **Допомога:**\n\n" \
                   "У грі Perky Coffee Jump ваша мета - керувати кавовим роботом, щоб стрибати по платформах і збирати кавові зерна. Чим більше зерен - тим вищий ваш рахунок! Уникайте падіння!\n\n" \
                   "**Управління:**\n" \
                   "Натискайте на екран, щоб стрибати.\n\n" \
                   "**Підказка:** Чим довше утримуєте палець, тим вищий стрибок!"
-        await context.bot.send_message(context.effective_user.id, message, parse_mode=ParseMode.MARKDOWN)
+        await context.bot.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
 
 # Ініціалізація класу бота
 perky_bot = PerkyBot()
@@ -269,7 +269,7 @@ async def setup_bot():
         # Додати обробники
         perky_bot.application.add_handler(CommandHandler("start", perky_bot.start))
         perky_bot.application.add_handler(CallbackQueryHandler(perky_bot.button_callback))
-        perky_bot.application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, perky_bot.web_app_data))
+        perky_bot.application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler))
         
         # Налаштувати webhook
         webhook_url = f"{WEBAPP_URL}/{BOT_TOKEN}"
@@ -281,24 +281,19 @@ async def setup_bot():
         raise
 
 # Додаємо обробку даних з WebApp
-async def web_app_data(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def web_app_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обробка даних, надісланих з WebApp"""
     data = json.loads(update.effective_message.web_app_data.data)
     user_id = update.effective_user.id
     score = data.get('score', 0)
+    collected_beans = data.get('collected_beans', 0)
     
-    # Збереження даних у базу
-    # У цьому прикладі я використаю твій ендпоінт,
-    # але можна було б зберегти напряму в БД
-    stats = GameStats(user_id=user_id, score=score, collected_beans=0)
+    stats = GameStats(user_id=user_id, score=score, collected_beans=collected_beans)
     await save_stats_endpoint(stats)
     
     message = f"🎉 Гра завершена! Ваш рахунок: **{score}** очок."
     await context.bot.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
-    logger.info(f"Received game data from user {user_id}: score={score}")
-
-# Додаємо цей метод до класу PerkyBot
-PerkyBot.web_app_data = web_app_data
+    logger.info(f"Received game data from user {user_id}: score={score}, beans={collected_beans}")
 
 # Запуск бота і вебхука під час старту FastAPI
 @app.on_event("startup")
