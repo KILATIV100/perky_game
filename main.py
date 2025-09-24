@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 from telegram.constants import ParseMode
 import asyncio
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 from pydantic import BaseModel
@@ -168,15 +168,10 @@ class PerkyBot:
 perky_bot = PerkyBot()
 
 # API endpoints
-@app.get("/game", response_class=HTMLResponse)
-async def get_game():
-    """Подає HTML-файл гри"""
-    try:
-        with open("game.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
-        return HTMLResponse(content=html_content)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Game file not found")
+# Обслуговування статичних файлів з папки 'static'
+# Це замінює старий ендпоінт /game
+app.mount("/game", StaticFiles(directory="static", html=True), name="static")
+
 
 @app.post("/save_stats")
 async def save_stats_endpoint(stats: GameStats):
