@@ -23,8 +23,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Змінні середовища
-BOT_TOKEN = os.getenv('BOT_TOKEN', '8253714238:AAH3hSxNpvb61lvo3PK0ikKThJ7494KGcMo')
-WEBAPP_URL = os.getenv('WEBAPP_URL', '')
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+WEBAPP_URL = os.getenv('WEBAPP_URL')
 PORT = int(os.getenv('PORT', 8000))
 
 # FastAPI додаток
