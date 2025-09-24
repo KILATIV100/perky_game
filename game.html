@@ -1,0 +1,3774 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖☕ Perky Coffee Jump</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+    // Ініціалізація Web App
+    const tg = window.Telegram.WebApp;
+
+    // Приклад використання: надіслати дані боту, коли гравець програє
+    function sendGameData(score) {
+        tg.sendData(JSON.stringify({
+            score: score,
+            player_id: tg.initDataUnsafe.user.id
+        }));
+    }
+
+    // Приклад: закрити Web App
+    function closeWebApp() {
+        tg.close();
+    }
+</script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+            border-radius: 0;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            pointer-events: auto;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+            background: rgba(255,255,255,0.7);
+        }
+
+        .menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            z-index: 20;
+            pointer-events: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .menu-header {
+            position: sticky;
+            top: 0;
+            background: rgba(102, 126, 234, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            z-index: 30;
+        }
+
+        .game-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .menu-content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .menu-section {
+            width: 100%;
+            max-width: 400px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .section-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .mode-btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            min-height: 80px;
+            justify-content: center;
+        }
+
+        .mode-btn:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .mode-btn .btn-icon {
+            font-size: 24px;
+        }
+
+        .mode-btn .btn-text {
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        .menu-tabs {
+            display: flex;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .menu-tab {
+            flex: 1;
+            padding: 12px 8px;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .menu-tab.active {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .menu-tab:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .settings-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            color: white;
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 25px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #4CAF50;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 21px;
+            height: 21px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(25px);
+        }
+
+        .scrollable-content {
+            max-height: 60vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 10px;
+            margin-right: -10px;
+        }
+
+        /* Custom scrollbar */
+        .scrollable-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollable-content::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+        }
+
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+        }
+
+        .scrollable-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
+        /* Firefox scrollbar */
+        .scrollable-content {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.3) rgba(255,255,255,0.1);
+        }
+
+        .game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            pointer-events: auto;
+            color: white;
+            text-align: center;
+        }
+
+        .bonus-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 40;
+            display: none;
+            max-width: 300px;
+            animation: popupAppear 0.5s ease-out;
+        }
+
+        @keyframes popupAppear {
+            from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .bonus-title {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #FFD700;
+        }
+
+        .bonus-instruction {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .bonus-timer {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-top: 15px;
+        }
+
+        .close-bonus {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .records-display {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            color: white;
+            font-size: 12px;
+            text-align: right;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 12px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        .new-record {
+            color: #FFD700;
+            font-weight: bold;
+            animation: recordGlow 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes recordGlow {
+            from { text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+            to { text-shadow: 0 0 10px #FFD700, 2px 2px 4px rgba(0,0,0,0.5); }
+        }
+
+        @keyframes slideDown {
+            0% { 
+                transform: translateX(-50%) translateY(-100%); 
+                opacity: 0; 
+            }
+            10% { 
+                transform: translateX(-50%) translateY(0); 
+                opacity: 1; 
+            }
+            90% { 
+                transform: translateX(-50%) translateY(0); 
+                opacity: 1; 
+            }
+            100% { 
+                transform: translateX(-50%) translateY(-100%); 
+                opacity: 0; 
+            }
+        }
+
+        @keyframes levelUpPop {
+            0% { 
+                transform: translate(-50%, -50%) scale(0.5); 
+                opacity: 0; 
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.1); 
+                opacity: 1; 
+            }
+            100% { 
+                transform: translate(-50%, -50%) scale(1); 
+                opacity: 0; 
+            }
+        }
+
+        .stats-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            color: white;
+        }
+
+        .stats-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #FFD700;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .game-over-title {
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+        }
+
+        .final-score {
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+
+        .restart-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            background: #4ecdc4;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .restart-btn:hover {
+            background: #45b7aa;
+            transform: translateY(-2px);
+        }
+
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .coins-display {
+            color: #FFD700;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .shop-categories {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .shop-category {
+            flex-shrink: 0;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .shop-category.active {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .shop-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+            max-width: 400px;
+        }
+
+        .shop-item {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+        }
+
+        .shop-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .shop-icon {
+            font-size: 40px;
+            flex-shrink: 0;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border-radius: 15px;
+            color: white;
+        }
+
+        .shop-info {
+            flex: 1;
+        }
+
+        .shop-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+
+        .shop-description {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .shop-level {
+            font-size: 12px;
+            margin-bottom: 10px;
+            color: #4CAF50;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .shop-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .shop-price {
+            font-size: 14px;
+            font-weight: bold;
+            color: #FFD700;
+        }
+
+        .shop-buy-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            min-width: 80px;
+        }
+
+        .shop-buy-btn:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-1px);
+        }
+
+        .shop-buy-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .challenges-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            color: #FFD700;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .challenges-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .challenge-item {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 15px;
+            color: #333;
+        }
+
+        .challenge-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .challenge-progress {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 8px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+
+        .challenge-progress-bar {
+            background: #4CAF50;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .challenge-reward {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .challenge-completed {
+            background: rgba(76, 175, 80, 0.2);
+            border: 2px solid #4CAF50;
+        }
+
+        .customize-section {
+            margin-bottom: 30px;
+        }
+
+        .customize-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .customize-item {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .customize-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .customize-item.active {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .customize-preview {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .customize-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .customize-cost {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .friends-tab {
+            transition: all 0.3s ease;
+        }
+
+        .friends-tab.active {
+            background: rgba(255,255,255,0.2) !important;
+        }
+
+        .friends-tab:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .friend-item {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .friend-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .friend-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .friend-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .friend-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .friend-stats {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .friend-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .friend-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .friend-btn.remove {
+            background: #f44336;
+        }
+
+        .invite-item {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .invite-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .invite-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .accept-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .decline-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .leaderboard-item {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .leaderboard-rank {
+            font-size: 18px;
+            font-weight: bold;
+            min-width: 30px;
+        }
+
+        .rank-1 { color: #FFD700; }
+        .rank-2 { color: #C0C0C0; }
+        .rank-3 { color: #CD7F32; }
+
+        .leaderboard-info {
+            flex: 1;
+        }
+
+        .leaderboard-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .leaderboard-stats {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .coop-challenge-item {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .coop-challenge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .coop-challenge-name {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .coop-challenge-reward {
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        .coop-challenge-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .coop-participants {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .participant-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+        }
+
+        .powerup-indicator {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            pointer-events: none;
+        }
+
+        .powerup-icon {
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px;
+            border-radius: 50%;
+            font-size: 16px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 480px) {
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .game-title {
+                font-size: 24px;
+            }
+            
+            .mode-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .mode-btn {
+                min-height: 60px;
+                font-size: 12px;
+                padding: 12px 15px;
+            }
+
+            .mode-btn .btn-icon {
+                font-size: 20px;
+            }
+
+            .mode-btn .btn-text {
+                font-size: 11px;
+            }
+
+            .menu-content {
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .menu-section {
+                padding: 15px;
+            }
+
+            .section-header {
+                font-size: 16px;
+            }
+
+            .shop-item {
+                padding: 15px;
+                gap: 12px;
+            }
+
+            .shop-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 24px;
+            }
+
+            .shop-name {
+                font-size: 14px;
+            }
+
+            .shop-description {
+                font-size: 11px;
+            }
+
+            .customize-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .customize-item {
+                padding: 12px;
+            }
+
+            .customize-preview {
+                font-size: 24px;
+            }
+
+            .customize-name {
+                font-size: 12px;
+            }
+
+            .scrollable-content {
+                max-height: 50vh;
+            }
+
+            .menu-tab {
+                padding: 10px 6px;
+                font-size: 11px;
+            }
+
+            .setting-item {
+                padding: 12px;
+            }
+
+            .setting-label {
+                font-size: 14px;
+            }
+
+            .toggle-switch {
+                width: 45px;
+                height: 22px;
+            }
+
+            .toggle-switch::after {
+                width: 18px;
+                height: 18px;
+            }
+
+            .toggle-switch.active::after {
+                transform: translateX(23px);
+            }
+        }
+
+        @media (max-width: 360px) {
+            .menu-content {
+                padding: 10px;
+            }
+
+            .mode-btn {
+                min-height: 50px;
+                padding: 10px;
+            }
+
+            .shop-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+
+            .shop-actions {
+                align-items: center;
+                width: 100%;
+            }
+
+            .shop-buy-btn {
+                width: 100%;
+            }
+        }
+
+        /* Touch-friendly scrolling */
+        @media (hover: none) and (pointer: coarse) {
+            .scrollable-content {
+                -webkit-overflow-scrolling: touch;
+                scroll-behavior: smooth;
+            }
+
+            .shop-categories {
+                -webkit-overflow-scrolling: touch;
+                scroll-behavior: smooth;
+            }
+
+            .scrollable-content::-webkit-scrollbar {
+                display: none;
+            }
+
+            .shop-categories::-webkit-scrollbar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="ui-overlay">
+            <div class="score-display">
+                <div>☕ <span id="coffeeCount">0</span></div>
+                <div>📏 <span id="heightScore">0</span>m</div>
+                <div id="timeDisplay" style="display: none;">⏱️ <span id="timeLeft">60</span>s</div>
+            </div>
+            <div class="records-display" id="recordsDisplay">
+                <div>🏆 Рекорд: <span id="bestHeight">0</span>м</div>
+                <div>☕ Макс зерен: <span id="bestCoffee">0</span></div>
+            </div>
+            <div class="powerup-indicator" id="powerupIndicator"></div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" id="leftBtn">←</button>
+            <button class="control-btn" id="rightBtn">→</button>
+        </div>
+
+        <div class="menu-screen" id="menuScreen">
+            <div class="menu-header">
+                <div class="game-title">🤖☕ Perky Coffee Jump</div>
+            </div>
+            
+            <div class="menu-content">
+                <div class="menu-tabs">
+                    <button class="menu-tab active" data-tab="play">🎮 Гра</button>
+                    <button class="menu-tab" data-tab="progress">📊 Прогрес</button>
+                    <button class="menu-tab" data-tab="social">👥 Соціальне</button>
+                    <button class="menu-tab" data-tab="settings">⚙️ Налаштування</button>
+                </div>
+
+                <!-- Play Tab -->
+                <div class="menu-section" id="playTab">
+                    <div class="section-header">
+                        <span><span class="section-icon">🎯</span>Режими гри</span>
+                    </div>
+                    <div class="mode-buttons">
+                        <button class="mode-btn" data-mode="classic">
+                            <div class="btn-icon">🎯</div>
+                            <div class="btn-text">Класичний<br>режим</div>
+                        </button>
+                        <button class="mode-btn" data-mode="timed">
+                            <div class="btn-icon">⏱️</div>
+                            <div class="btn-text">На час<br>(60с)</div>
+                        </button>
+                        <button class="mode-btn" data-mode="night">
+                            <div class="btn-icon">🌙</div>
+                            <div class="btn-text">Нічний<br>режим</div>
+                        </button>
+                        <button class="mode-btn" data-mode="extreme">
+                            <div class="btn-icon">🔥</div>
+                            <div class="btn-text">Екстремальний<br>режим</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Tab -->
+                <div class="menu-section" id="progressTab" style="display: none;">
+                    <div class="section-header">
+                        <span><span class="section-icon">📊</span>Статистика</span>
+                    </div>
+                    <div class="scrollable-content">
+                        <div class="stats-grid" id="statsGrid">
+                            <div>🏆 Найкраща висота: <span id="statsBestHeight">0</span>м</div>
+                            <div>☕ Найбільше зерен: <span id="statsBestCoffee">0</span></div>
+                            <div>🎮 Всього ігор: <span id="statsGamesPlayed">0</span></div>
+                            <div>⭐ Всього зерен: <span id="statsTotalCoffee">0</span></div>
+                            <div>🪙 Монети: <span id="statsCoins">0</span></div>
+                            <div>⚡ Рівень: <span id="statsLevel">1</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="section-header" style="margin-top: 20px;">
+                        <span><span class="section-icon">🛒</span>Магазин</span>
+                    </div>
+                    <div class="mode-buttons">
+                        <button class="mode-btn" id="shopBtn">
+                            <div class="btn-icon">🛒</div>
+                            <div class="btn-text">Магазин<br>прокачки</div>
+                        </button>
+                        <button class="mode-btn" id="customizeBtn">
+                            <div class="btn-icon">🎨</div>
+                            <div class="btn-text">Кастомізація<br>Перкі</div>
+                        </button>
+                    </div>
+                    
+                    <div class="section-header" style="margin-top: 20px;">
+                        <span><span class="section-icon">🎯</span>Завдання</span>
+                    </div>
+                    <div class="mode-buttons">
+                        <button class="mode-btn" id="challengesBtn">
+                            <div class="btn-icon">🎯</div>
+                            <div class="btn-text">Завдання та<br>досягнення</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Social Tab -->
+                <div class="menu-section" id="socialTab" style="display: none;">
+                    <div class="section-header">
+                        <span><span class="section-icon">👥</span>Соціальні функції</span>
+                    </div>
+                    <div class="mode-buttons">
+                        <button class="mode-btn" id="friendsBtn">
+                            <div class="btn-icon">👥</div>
+                            <div class="btn-text">Друзі та<br>рейтинг</div>
+                        </button>
+                    </div>
+                    
+                    <div class="section-header" style="margin-top: 20px;">
+                        <span><span class="section-icon">🤖</span>Ваш профіль</span>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <span>🆔</span>
+                            <div>
+                                <div>ID: <span id="menuPlayerId">PERKY001</span></div>
+                                <div style="font-size: 12px; color: rgba(255,255,255,0.7);">Рівень <span id="menuPlayerLevel">1</span></div>
+                            </div>
+                        </div>
+                        <button class="shop-buy-btn" id="shareIdBtnMenu">📋 Поділитися</button>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="menu-section" id="settingsTab" style="display: none;">
+                    <div class="section-header">
+                        <span><span class="section-icon">⚙️</span>Налаштування гри</span>
+                    </div>
+                    <div class="scrollable-content">
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>📱</span>
+                                    <span>Гіроскоп</span>
+                                </div>
+                                <div class="toggle-switch" id="gyroToggle"></div>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>🔊</span>
+                                    <span>Звукові ефекти</span>
+                                </div>
+                                <div class="toggle-switch active" id="soundToggle"></div>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>📳</span>
+                                    <span>Вібрація</span>
+                                </div>
+                                <div class="toggle-switch active" id="vibrationToggle"></div>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>🌍</span>
+                                    <span>Автосезони</span>
+                                </div>
+                                <div class="toggle-switch active" id="autoSeasonToggle"></div>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>🎮</span>
+                                    <span>Показувати FPS</span>
+                                </div>
+                                <div class="toggle-switch" id="fpsToggle"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section-header" style="margin-top: 20px;">
+                        <span><span class="section-icon">ℹ️</span>Інформація</span>
+                    </div>
+                    <div style="color: rgba(255,255,255,0.8); text-align: center; font-size: 14px; line-height: 1.5;">
+                        Керування: стрілки або сенсорні кнопки<br>
+                        Збирайте кавові зерна та стрибайте вище!<br>
+                        <div style="margin-top: 10px; font-size: 12px; color: rgba(255,255,255,0.6);">
+                            Версія 2.0 | © 2024 Perky Coffee Jump
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-over-screen" id="gameOverScreen">
+            <div class="game-over-title">Гра завершена!</div>
+            <div class="final-score">
+                <div>☕ Зібрано: <span id="finalCoffee">0</span></div>
+                <div>📏 Висота: <span id="finalHeight">0</span>м</div>
+                <div id="finalTime" style="display: none;">⏱️ Час: <span id="timeSpent">0</span>с</div>
+            </div>
+            <button class="restart-btn" id="restartBtn">🔄 Грати знову</button>
+            <button class="restart-btn" id="menuBtn" style="background: #95a5a6; margin-top: 10px;">📋 Головне меню</button>
+        </div>
+
+        <div class="particles" id="particles"></div>
+        
+        <div class="bonus-popup" id="bonusPopup">
+            <div class="bonus-title" id="bonusTitle">🎁 Бонус отримано!</div>
+            <div id="bonusContent"></div>
+            <div class="bonus-instruction" id="bonusInstruction"></div>
+            <div class="bonus-timer" id="bonusTimer">⏰ Закриється через: 10:00</div>
+            <button class="close-bonus" id="closeBonusBtn">Закрити</button>
+        </div>
+
+        <!-- Shop Screen -->
+        <div class="menu-screen" id="shopScreen" style="display: none;">
+            <div class="menu-header">
+                <div class="game-title">🛒 Магазин прокачки</div>
+                <div class="coins-display">🪙 Монети: <span id="shopCoins">0</span></div>
+            </div>
+            
+            <div class="menu-content">
+                <div class="shop-categories">
+                    <div class="shop-category active" data-category="powerups">⚡ Здібності</div>
+                    <div class="shop-category" data-category="boosters">🚀 Бустери</div>
+                    <div class="shop-category" data-category="special">✨ Спеціальні</div>
+                </div>
+                
+                <div class="scrollable-content">
+                    <div class="shop-grid" id="powerupsCategory">
+                        <div class="shop-item" data-powerup="doubleJump">
+                            <div class="shop-icon">⚡</div>
+                            <div class="shop-info">
+                                <div class="shop-name">Подвійний стрибок</div>
+                                <div class="shop-description">Можливість стрибнути в повітрі для досягнення вищих платформ</div>
+                                <div class="shop-level">
+                                    <span>Рівень: <span class="level-display">0</span>/5</span>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shop-actions">
+                                <div class="shop-price">100🪙</div>
+                                <button class="shop-buy-btn">Купити</button>
+                            </div>
+                        </div>
+                        
+                        <div class="shop-item" data-powerup="shield">
+                            <div class="shop-icon">🛡️</div>
+                            <div class="shop-info">
+                                <div class="shop-name">Щит</div>
+                                <div class="shop-description">Захист від зіткнень з перешкодами та ворогами</div>
+                                <div class="shop-level">
+                                    <span>Рівень: <span class="level-display">0</span>/3</span>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shop-actions">
+                                <div class="shop-price">150🪙</div>
+                                <button class="shop-buy-btn">Купити</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="shop-grid" id="boostersCategory" style="display: none;">
+                        <div class="shop-item" data-powerup="magnet">
+                            <div class="shop-icon">🧲</div>
+                            <div class="shop-info">
+                                <div class="shop-name">Магніт</div>
+                                <div class="shop-description">Автоматичне збирання кавових зерен на відстані</div>
+                                <div class="shop-level">
+                                    <span>Рівень: <span class="level-display">0</span>/4</span>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shop-actions">
+                                <div class="shop-price">200🪙</div>
+                                <button class="shop-buy-btn">Купити</button>
+                            </div>
+                        </div>
+                        
+                        <div class="shop-item" data-powerup="turbo">
+                            <div class="shop-icon">🚀</div>
+                            <div class="shop-info">
+                                <div class="shop-name">Турбо</div>
+                                <div class="shop-description">Тимчасове прискорення руху та стрибків</div>
+                                <div class="shop-level">
+                                    <span>Рівень: <span class="level-display">0</span>/3</span>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shop-actions">
+                                <div class="shop-price">250🪙</div>
+                                <button class="shop-buy-btn">Купити</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="shop-grid" id="specialCategory" style="display: none;">
+                        <div class="shop-item">
+                            <div class="shop-icon">🎁</div>
+                            <div class="shop-info">
+                                <div class="shop-name">Щасливий пакет</div>
+                                <div class="shop-description">Випадкова прокачка + бонусні монети</div>
+                                <div class="shop-level">
+                                    <span>Одноразова покупка</span>
+                                </div>
+                            </div>
+                            <div class="shop-actions">
+                                <div class="shop-price">500🪙</div>
+                                <button class="shop-buy-btn">Купити</button>
+                            </div>
+                        </div>
+                        
+                        <div class="shop-item">
+                            <div class="shop-icon">💎</div>
+                            <div class="shop-info">
+                                <div class="shop-name">Преміум пакет</div>
+                                <div class="shop-description">Всі прокачки +1 рівень + ексклюзивний скін</div>
+                                <div class="shop-level">
+                                    <span>Ексклюзивна пропозиція</span>
+                                </div>
+                            </div>
+                            <div class="shop-actions">
+                                <div class="shop-price">1000🪙</div>
+                                <button class="shop-buy-btn">Купити</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="mode-btn" id="shopBackBtn" style="margin-top: 20px;">
+                    <div class="btn-icon">⬅️</div>
+                    <div class="btn-text">Назад до меню</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Challenges Screen -->
+        <div class="menu-screen" id="challengesScreen" style="display: none;">
+            <div class="game-title">🎯 Завдання та досягнення</div>
+            
+            <div class="challenges-section">
+                <div class="section-title">📅 Щоденні завдання</div>
+                <div id="dailyChallengesList" class="challenges-list"></div>
+            </div>
+            
+            <div class="challenges-section">
+                <div class="section-title">📊 Тижневі цілі</div>
+                <div id="weeklyChallengesList" class="challenges-list"></div>
+            </div>
+            
+            <button class="mode-btn" id="challengesBackBtn">⬅️ Назад</button>
+        </div>
+
+        <!-- Friends Screen -->
+        <div class="menu-screen" id="friendsScreen" style="display: none;">
+            <div class="game-title">👥 Система друзів</div>
+            
+            <div class="player-info" style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; margin-bottom: 20px; color: white;">
+                <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">
+                    🤖 <span id="playerNameDisplay">Гравець</span>
+                </div>
+                <div style="font-size: 12px; color: rgba(255,255,255,0.8);">
+                    ID: <span id="playerIdDisplay">PERKY001</span>
+                </div>
+                <button class="mode-btn" id="shareIdBtn" style="margin-top: 10px; padding: 8px 15px; font-size: 12px;">📋 Поділитися ID</button>
+            </div>
+            
+            <div class="friends-tabs" style="display: flex; margin-bottom: 20px; background: rgba(255,255,255,0.1); border-radius: 15px; padding: 5px;">
+                <button class="friends-tab active" data-tab="friends" style="flex: 1; padding: 10px; border: none; background: rgba(255,255,255,0.2); color: white; border-radius: 10px; cursor: pointer; font-size: 14px;">👥 Друзі</button>
+                <button class="friends-tab" data-tab="invites" style="flex: 1; padding: 10px; border: none; background: transparent; color: white; border-radius: 10px; cursor: pointer; font-size: 14px;">📨 Запрошення</button>
+                <button class="friends-tab" data-tab="leaderboard" style="flex: 1; padding: 10px; border: none; background: transparent; color: white; border-radius: 10px; cursor: pointer; font-size: 14px;">🏆 Рейтинг</button>
+                <button class="friends-tab" data-tab="coop" style="flex: 1; padding: 10px; border: none; background: transparent; color: white; border-radius: 10px; cursor: pointer; font-size: 14px;">🤝 Команда</button>
+            </div>
+            
+            <!-- Friends Tab -->
+            <div class="friends-content" id="friendsTab">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="friendIdInput" placeholder="Введіть ID друга" style="flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 14px;">
+                    <button class="mode-btn" id="addFriendBtn" style="padding: 10px 15px; font-size: 14px;">➕ Додати</button>
+                </div>
+                
+                <div id="friendsList" class="friends-list">
+                    <div class="empty-state" style="text-align: center; color: rgba(255,255,255,0.6); padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">👥</div>
+                        <div style="font-size: 16px; margin-bottom: 10px;">Поки що немає друзів</div>
+                        <div style="font-size: 14px;">Додайте друзів за їх ID для спільних ігор!</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Invites Tab -->
+            <div class="friends-content" id="invitesTab" style="display: none;">
+                <div class="section-title">📨 Вхідні запрошення</div>
+                <div id="pendingInvitesList" class="invites-list"></div>
+                
+                <div class="section-title" style="margin-top: 20px;">📤 Відправлені запрошення</div>
+                <div id="sentInvitesList" class="invites-list"></div>
+            </div>
+            
+            <!-- Leaderboard Tab -->
+            <div class="friends-content" id="leaderboardTab" style="display: none;">
+                <div class="section-title">🏆 Рейтинг друзів</div>
+                <div id="friendsLeaderboard" class="leaderboard-list"></div>
+            </div>
+            
+            <!-- Cooperative Tab -->
+            <div class="friends-content" id="coopTab" style="display: none;">
+                <div class="section-title">🤝 Командні челенджі</div>
+                <div id="cooperativeChallengesList" class="challenges-list"></div>
+            </div>
+            
+            <button class="mode-btn" id="friendsBackBtn">⬅️ Назад</button>
+        </div>
+
+        <!-- Customization Screen -->
+        <div class="menu-screen" id="customizeScreen" style="display: none;">
+            <div class="game-title">🎨 Кастомізація Перкі</div>
+            
+            <div class="customize-section">
+                <div class="section-title">🎨 Скіни</div>
+                <div class="customize-grid" id="skinsGrid">
+                    <div class="customize-item active" data-skin="default">
+                        <div class="customize-preview">🤖</div>
+                        <div class="customize-name">Класичний</div>
+                    </div>
+                    <div class="customize-item" data-skin="golden">
+                        <div class="customize-preview">👑</div>
+                        <div class="customize-name">Золотий</div>
+                        <div class="customize-cost">500🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="ninja">
+                        <div class="customize-preview">🥷</div>
+                        <div class="customize-name">Ніндзя</div>
+                        <div class="customize-cost">750🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="cyber">
+                        <div class="customize-preview">🦾</div>
+                        <div class="customize-name">Кіберпанк</div>
+                        <div class="customize-cost">600🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="alien">
+                        <div class="customize-preview">👽</div>
+                        <div class="customize-name">Інопланетянин</div>
+                        <div class="customize-cost">800🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="pirate">
+                        <div class="customize-preview">🏴‍☠️</div>
+                        <div class="customize-name">Пірат</div>
+                        <div class="customize-cost">650🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="knight">
+                        <div class="customize-preview">⚔️</div>
+                        <div class="customize-name">Лицар</div>
+                        <div class="customize-cost">700🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="wizard">
+                        <div class="customize-preview">🧙‍♂️</div>
+                        <div class="customize-name">Чарівник</div>
+                        <div class="customize-cost">850🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="astronaut">
+                        <div class="customize-preview">👨‍🚀</div>
+                        <div class="customize-name">Астронавт</div>
+                        <div class="customize-cost">900🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="vampire">
+                        <div class="customize-preview">🧛‍♂️</div>
+                        <div class="customize-name">Вампір</div>
+                        <div class="customize-cost">750🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="superhero">
+                        <div class="customize-preview">🦸‍♂️</div>
+                        <div class="customize-name">Супергерой</div>
+                        <div class="customize-cost">1000🪙</div>
+                    </div>
+                    <div class="customize-item" data-skin="detective">
+                        <div class="customize-preview">🕵️‍♂️</div>
+                        <div class="customize-name">Детектив</div>
+                        <div class="customize-cost">550🪙</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="customize-section">
+                <div class="section-title">✨ Ефекти стрибків</div>
+                <div class="customize-grid" id="effectsGrid">
+                    <div class="customize-item active" data-effect="default">
+                        <div class="customize-preview">⭐</div>
+                        <div class="customize-name">Зірки</div>
+                    </div>
+                    <div class="customize-item" data-effect="fire">
+                        <div class="customize-preview">🔥</div>
+                        <div class="customize-name">Вогонь</div>
+                        <div class="customize-cost">300🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="rainbow">
+                        <div class="customize-preview">🌈</div>
+                        <div class="customize-name">Веселка</div>
+                        <div class="customize-cost">400🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="lightning">
+                        <div class="customize-preview">⚡</div>
+                        <div class="customize-name">Блискавка</div>
+                        <div class="customize-cost">350🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="hearts">
+                        <div class="customize-preview">💖</div>
+                        <div class="customize-name">Сердечка</div>
+                        <div class="customize-cost">250🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="snowflakes">
+                        <div class="customize-preview">❄️</div>
+                        <div class="customize-name">Сніжинки</div>
+                        <div class="customize-cost">320🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="magic">
+                        <div class="customize-preview">✨</div>
+                        <div class="customize-name">Магія</div>
+                        <div class="customize-cost">450🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="bubbles">
+                        <div class="customize-preview">🫧</div>
+                        <div class="customize-name">Бульбашки</div>
+                        <div class="customize-cost">280🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="coins">
+                        <div class="customize-preview">🪙</div>
+                        <div class="customize-name">Монети</div>
+                        <div class="customize-cost">380🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="flowers">
+                        <div class="customize-preview">🌸</div>
+                        <div class="customize-name">Квіти</div>
+                        <div class="customize-cost">300🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="diamonds">
+                        <div class="customize-preview">💎</div>
+                        <div class="customize-name">Діаманти</div>
+                        <div class="customize-cost">500🪙</div>
+                    </div>
+                    <div class="customize-item" data-effect="smoke">
+                        <div class="customize-preview">💨</div>
+                        <div class="customize-name">Дим</div>
+                        <div class="customize-cost">200🪙</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="mode-btn" id="customizeBackBtn">⬅️ Назад</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+        
+        // Initialize gyroscope
+        function initGyroscope() {
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', (event) => {
+                    if (gyroEnabled && gameState === 'playing') {
+                        gyroTilt = event.gamma || 0; // Left-right tilt
+                        // Normalize tilt (-30 to 30 degrees to -1 to 1)
+                        gyroTilt = Math.max(-30, Math.min(30, gyroTilt)) / 30;
+                    }
+                });
+            }
+        }
+        
+        // Request gyroscope permission (for iOS 13+)
+        function requestGyroPermission() {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            gyroEnabled = true;
+                            initGyroscope();
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                gyroEnabled = true;
+                initGyroscope();
+            }
+        }
+
+        // Game variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameState = 'menu'; // menu, playing, gameOver
+        let gameMode = 'classic';
+        let animationId;
+        
+        // Game objects
+        let player = {};
+        let platforms = [];
+        let coffees = [];
+        let particles = [];
+        let obstacles = [];
+        let camera = { y: 0, targetY: 0 };
+        
+        // Game stats
+        let score = 0;
+        let height = 0;
+        let coffeeCount = 0;
+        let timeLeft = 60;
+        let gameTimer;
+        let bonusTimer;
+        let bonusTimeLeft = 0;
+        
+        // Records system
+        let gameStats = {
+            bestHeight: 0,
+            bestCoffee: 0,
+            gamesPlayed: 0,
+            totalCoffee: 0,
+            coins: 0,
+            experience: 0,
+            level: 1
+        };
+        
+        // Power-ups system
+        let powerUps = {
+            doubleJump: { level: 0, maxLevel: 5, cost: 100, active: false, uses: 0 },
+            shield: { level: 0, maxLevel: 3, cost: 150, active: false, hits: 0 },
+            magnet: { level: 0, maxLevel: 4, cost: 200, active: false, duration: 0 },
+            turbo: { level: 0, maxLevel: 3, cost: 250, active: false, duration: 0 }
+        };
+        
+        // Character customization
+        let character = {
+            skin: 'default',
+            outfit: 'none',
+            trail: 'none',
+            jumpEffect: 'default'
+        };
+        
+        // Friends system
+        let friendsData = {
+            friends: [],
+            pendingInvites: [],
+            sentInvites: [],
+            playerName: '',
+            playerId: '',
+            cooperativeChallenges: []
+        };
+        
+        // Cooperative challenges
+        let cooperativeChallenges = [
+            { 
+                id: 'team_collect_500', 
+                name: 'Командний збір: 500 зерен', 
+                description: 'Разом з друзями зберіть 500 кавових зерен',
+                target: 500, 
+                progress: 0, 
+                reward: 150, 
+                completed: false,
+                participants: []
+            },
+            { 
+                id: 'team_height_1000', 
+                name: 'Командна висота: 1000м', 
+                description: 'Сумарно досягніть висоти 1000м з друзями',
+                target: 1000, 
+                progress: 0, 
+                reward: 200, 
+                completed: false,
+                participants: []
+            },
+            { 
+                id: 'team_games_20', 
+                name: 'Командні ігри: 20 партій', 
+                description: 'Зіграйте 20 ігор разом з друзями',
+                target: 20, 
+                progress: 0, 
+                reward: 100, 
+                completed: false,
+                participants: []
+            }
+        ];
+        
+        // Daily challenges
+        let dailyChallenges = [
+            { id: 'collect100', name: 'Зібрати 100 зерен', target: 100, progress: 0, reward: 50, completed: false },
+            { id: 'height300', name: 'Досягти висоти 300м', target: 300, progress: 0, reward: 75, completed: false },
+            { id: 'play5games', name: 'Зіграти 5 ігор', target: 5, progress: 0, reward: 30, completed: false }
+        ];
+        
+        // Weekly goals
+        let weeklyGoals = [
+            { id: 'collect1000', name: 'Зібрати 1000 зерен за тиждень', target: 1000, progress: 0, reward: 200, completed: false },
+            { id: 'height500', name: 'Досягти висоти 500м', target: 500, progress: 0, reward: 300, completed: false }
+        ];
+        
+        // Bonus system
+        let bonusesShown = {
+            discount2: false,
+            discount5: false,
+            brandedCup: false
+        };
+        
+        // Input handling
+        let keys = {};
+        let touchControls = { left: false, right: false };
+        let gyroEnabled = false;
+        let gyroTilt = 0;
+        
+        // Resize canvas
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Game modes configuration
+        const gameModes = {
+            classic: {
+                name: 'Класичний',
+                background: 'linear-gradient(180deg, #87CEEB 0%, #98FB98 100%)',
+                platformColor: '#8B4513',
+                timed: false,
+                obstacles: false
+            },
+            timed: {
+                name: 'На час',
+                background: 'linear-gradient(180deg, #FF6B6B 0%, #FFE66D 100%)',
+                platformColor: '#D2691E',
+                timed: true,
+                obstacles: false
+            },
+            night: {
+                name: 'Нічний',
+                background: 'linear-gradient(180deg, #2C3E50 0%, #34495E 100%)',
+                platformColor: '#7F8C8D',
+                timed: false,
+                obstacles: false
+            },
+            extreme: {
+                name: 'Екстремальний',
+                background: 'linear-gradient(180deg, #8E2DE2 0%, #4A00E0 100%)',
+                platformColor: '#E74C3C',
+                timed: false,
+                obstacles: true
+            }
+        };
+        
+        // Initialize player
+        function initPlayer() {
+            player = {
+                x: canvas.width / 2,
+                y: canvas.height - 100,
+                width: 30,
+                height: 30,
+                vx: 0,
+                vy: 0,
+                onGround: false,
+                jumpPower: -15,
+                speed: 5,
+                color: '#FF6B6B'
+            };
+        }
+        
+        // Initialize platforms
+        function initPlatforms() {
+            platforms = [];
+            obstacles = [];
+            const platformWidth = 80;
+            const platformHeight = 15;
+            
+            // Starting platform (always normal)
+            platforms.push({
+                x: canvas.width / 2 - platformWidth / 2,
+                y: canvas.height - 50,
+                width: platformWidth,
+                height: platformHeight,
+                type: 'normal',
+                broken: false
+            });
+            
+            // Generate platforms going up
+            for (let i = 1; i < 50; i++) {
+                let platformType = 'normal';
+                
+                // Platform type distribution
+                const rand = Math.random();
+                if (rand < 0.1) platformType = 'bouncy';      // 10% bouncy
+                else if (rand < 0.18) platformType = 'fragile'; // 8% fragile
+                else if (rand < 0.23) platformType = 'bonus';   // 5% bonus
+                
+                platforms.push({
+                    x: Math.random() * (canvas.width - platformWidth),
+                    y: canvas.height - 50 - (i * 120),
+                    width: platformWidth,
+                    height: platformHeight,
+                    type: platformType,
+                    broken: false,
+                    bounceAnimation: 0
+                });
+                
+                // Add obstacles starting from level 8
+                if (i >= 8 && Math.random() < 0.3) {
+                    const obstacleType = Math.random() < 0.6 ? 'spike' : 'virus';
+                    
+                    if (obstacleType === 'spike') {
+                        obstacles.push({
+                            x: Math.random() * (canvas.width - 20),
+                            y: canvas.height - 50 - (i * 120) - 25,
+                            width: 20,
+                            height: 25,
+                            type: 'spike'
+                        });
+                    } else {
+                        obstacles.push({
+                            x: Math.random() * (canvas.width - 25),
+                            y: canvas.height - 50 - (i * 120) - 30,
+                            width: 25,
+                            height: 25,
+                            type: 'virus',
+                            moveDirection: Math.random() < 0.5 ? -1 : 1,
+                            moveSpeed: 1 + Math.random() * 2,
+                            animation: 0
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Initialize coffee beans
+        function initCoffees() {
+            coffees = [];
+            platforms.forEach((platform, index) => {
+                if (index > 0 && Math.random() < 0.7) {
+                    coffees.push({
+                        x: platform.x + platform.width / 2 - 10,
+                        y: platform.y - 25,
+                        width: 20,
+                        height: 20,
+                        collected: false,
+                        bounce: 0
+                    });
+                }
+            });
+        }
+        
+        // Load stats from localStorage
+        function loadStats() {
+            const saved = localStorage.getItem('perkyCoffeeStats');
+            if (saved) {
+                gameStats = { ...gameStats, ...JSON.parse(saved) };
+            }
+            
+            // Load friends data
+            const savedFriends = localStorage.getItem('perkyCoffeeFriends');
+            if (savedFriends) {
+                friendsData = { ...friendsData, ...JSON.parse(savedFriends) };
+            } else {
+                // Generate unique player ID
+                friendsData.playerId = 'PERKY' + Math.random().toString(36).substr(2, 6).toUpperCase();
+                friendsData.playerName = 'Гравець' + Math.floor(Math.random() * 1000);
+            }
+            
+            updateStatsDisplay();
+            updatePlayerInfo();
+        }
+        
+        // Save stats to localStorage
+        function saveStats() {
+            localStorage.setItem('perkyCoffeeStats', JSON.stringify(gameStats));
+            localStorage.setItem('perkyCoffeeFriends', JSON.stringify(friendsData));
+        }
+        
+        // Update stats display
+        function updateStatsDisplay() {
+            document.getElementById('statsBestHeight').textContent = gameStats.bestHeight;
+            document.getElementById('statsBestCoffee').textContent = gameStats.bestCoffee;
+            document.getElementById('statsGamesPlayed').textContent = gameStats.gamesPlayed;
+            document.getElementById('statsTotalCoffee').textContent = gameStats.totalCoffee;
+            document.getElementById('statsCoins').textContent = gameStats.coins;
+            document.getElementById('statsLevel').textContent = gameStats.level;
+            document.getElementById('bestHeight').textContent = gameStats.bestHeight;
+            document.getElementById('bestCoffee').textContent = gameStats.bestCoffee;
+            
+            // Update shop coins display
+            const shopCoins = document.getElementById('shopCoins');
+            if (shopCoins) shopCoins.textContent = gameStats.coins;
+        }
+        
+        // Level up system
+        function checkLevelUp() {
+            const requiredExp = gameStats.level * 100;
+            if (gameStats.experience >= requiredExp) {
+                gameStats.level++;
+                gameStats.experience -= requiredExp;
+                gameStats.coins += gameStats.level * 50; // Level up bonus
+                
+                // Show level up notification
+                showLevelUpNotification();
+                checkLevelUp(); // Check for multiple level ups
+            }
+        }
+        
+        // Show level up notification
+        function showLevelUpNotification() {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(135deg, #FFD700, #FFA500);
+                color: white;
+                padding: 20px;
+                border-radius: 15px;
+                font-size: 18px;
+                font-weight: bold;
+                z-index: 1000;
+                animation: levelUpPop 2s ease-out forwards;
+            `;
+            notification.textContent = `🎉 Рівень ${gameStats.level}! +${gameStats.level * 50} монет!`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 2000);
+        }
+        
+        // Update power-up indicators
+        function updatePowerUpIndicators() {
+            const indicator = document.getElementById('powerupIndicator');
+            indicator.innerHTML = '';
+            
+            Object.entries(powerUps).forEach(([key, powerUp]) => {
+                if (powerUp.active) {
+                    const icon = document.createElement('div');
+                    icon.className = 'powerup-icon';
+                    
+                    switch(key) {
+                        case 'doubleJump':
+                            icon.textContent = '⚡';
+                            icon.title = `Подвійний стрибок: ${powerUp.uses} використань`;
+                            break;
+                        case 'shield':
+                            icon.textContent = '🛡️';
+                            icon.title = `Щит: ${powerUp.hits} захистів`;
+                            break;
+                        case 'magnet':
+                            icon.textContent = '🧲';
+                            icon.title = `Магніт: ${Math.ceil(powerUp.duration/60)}с`;
+                            break;
+                        case 'turbo':
+                            icon.textContent = '🚀';
+                            icon.title = `Турбо: ${Math.ceil(powerUp.duration/60)}с`;
+                            break;
+                    }
+                    
+                    indicator.appendChild(icon);
+                }
+            });
+        }
+        
+        // Activate power-ups at game start
+        function activatePowerUps() {
+            Object.entries(powerUps).forEach(([key, powerUp]) => {
+                if (powerUp.level > 0) {
+                    powerUp.active = true;
+                    
+                    switch(key) {
+                        case 'doubleJump':
+                            powerUp.uses = powerUp.level;
+                            break;
+                        case 'shield':
+                            powerUp.hits = powerUp.level;
+                            break;
+                        case 'magnet':
+                            powerUp.duration = powerUp.level * 300; // 5 seconds per level
+                            break;
+                        case 'turbo':
+                            powerUp.duration = powerUp.level * 180; // 3 seconds per level
+                            break;
+                    }
+                }
+            });
+            updatePowerUpIndicators();
+        }
+        
+        // Update challenges progress
+        function updateChallengesProgress() {
+            // Daily challenges
+            dailyChallenges.forEach(challenge => {
+                if (challenge.completed) return;
+                
+                switch(challenge.id) {
+                    case 'collect100':
+                        challenge.progress = Math.min(coffeeCount, challenge.target);
+                        break;
+                    case 'height300':
+                        challenge.progress = Math.min(height, challenge.target);
+                        break;
+                    case 'play5games':
+                        challenge.progress = Math.min(gameStats.gamesPlayed, challenge.target);
+                        break;
+                }
+                
+                if (challenge.progress >= challenge.target && !challenge.completed) {
+                    challenge.completed = true;
+                    gameStats.coins += challenge.reward;
+                    showChallengeCompleted(challenge);
+                }
+            });
+            
+            // Weekly goals
+            weeklyGoals.forEach(goal => {
+                if (goal.completed) return;
+                
+                switch(goal.id) {
+                    case 'collect1000':
+                        goal.progress = Math.min(gameStats.totalCoffee, goal.target);
+                        break;
+                    case 'height500':
+                        goal.progress = Math.min(gameStats.bestHeight, goal.target);
+                        break;
+                }
+                
+                if (goal.progress >= goal.target && !goal.completed) {
+                    goal.completed = true;
+                    gameStats.coins += goal.reward;
+                    showChallengeCompleted(goal);
+                }
+            });
+        }
+        
+        // Show challenge completed notification
+        function showChallengeCompleted(challenge) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20%;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #4CAF50, #45a049);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 15px;
+                font-size: 16px;
+                font-weight: bold;
+                z-index: 1000;
+                animation: slideDown 3s ease-out forwards;
+            `;
+            notification.innerHTML = `
+                <div>🎯 Завдання виконано!</div>
+                <div style="font-size: 14px; margin-top: 5px;">${challenge.name}</div>
+                <div style="color: #FFD700; margin-top: 5px;">+${challenge.reward} монет!</div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+        
+        // Check and show bonuses
+        function checkBonuses() {
+            if (coffeeCount >= 50 && !bonusesShown.discount2) {
+                showBonus('discount2', '2% знижка на каву!', 'Покажіть це повідомлення бариста для отримання знижки 2% на будь-який напій.');
+                bonusesShown.discount2 = true;
+            } else if (coffeeCount >= 100 && !bonusesShown.discount5) {
+                showBonus('discount5', '5% знижка на каву!', 'Покажіть це повідомлення бариста для отримання знижки 5% на будь-який напій.');
+                bonusesShown.discount5 = true;
+            } else if (coffeeCount >= 5000 && !bonusesShown.brandedCup) {
+                showBonus('brandedCup', '🥤 Брендований стакан!', 'Покажіть це повідомлення бариста для отримання безкоштовного брендованого стакану Perky Coffee!');
+                bonusesShown.brandedCup = true;
+            }
+        }
+        
+        // Show bonus popup
+        function showBonus(type, title, instruction) {
+            document.getElementById('bonusTitle').textContent = '🎁 ' + title;
+            document.getElementById('bonusContent').innerHTML = `<div style="font-size: 20px; margin: 10px 0;">☕ Зібрано ${coffeeCount} зерен!</div>`;
+            document.getElementById('bonusInstruction').textContent = instruction;
+            document.getElementById('bonusPopup').style.display = 'block';
+            
+            // Start 10-minute timer
+            bonusTimeLeft = 600; // 10 minutes in seconds
+            updateBonusTimer();
+            
+            bonusTimer = setInterval(() => {
+                bonusTimeLeft--;
+                updateBonusTimer();
+                
+                if (bonusTimeLeft <= 0) {
+                    closeBonusPopup();
+                }
+            }, 1000);
+        }
+        
+        // Update bonus timer display
+        function updateBonusTimer() {
+            const minutes = Math.floor(bonusTimeLeft / 60);
+            const seconds = bonusTimeLeft % 60;
+            document.getElementById('bonusTimer').textContent = `⏰ Закриється через: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Close bonus popup
+        function closeBonusPopup() {
+            document.getElementById('bonusPopup').style.display = 'none';
+            if (bonusTimer) {
+                clearInterval(bonusTimer);
+                bonusTimer = null;
+            }
+        }
+        
+        // Start game
+        function startGame(mode) {
+            gameMode = mode;
+            gameState = 'playing';
+            
+            // Reset stats
+            score = 0;
+            height = 0;
+            coffeeCount = 0;
+            timeLeft = 60;
+            
+            // Reset bonuses for this game
+            bonusesShown = {
+                discount2: false,
+                discount5: false,
+                brandedCup: false
+            };
+            
+            // Apply mode styling
+            const modeConfig = gameModes[mode];
+            document.querySelector('.game-container').style.background = modeConfig.background;
+            
+            // Initialize game objects
+            initPlayer();
+            initPlatforms();
+            initCoffees();
+            
+            camera.y = 0;
+            camera.targetY = 0;
+            particles = [];
+            
+            // Activate power-ups
+            activatePowerUps();
+            
+            // Show/hide UI elements
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('shopScreen').style.display = 'none';
+            document.getElementById('challengesScreen').style.display = 'none';
+            document.getElementById('customizeScreen').style.display = 'none';
+            
+            if (modeConfig.timed) {
+                document.getElementById('timeDisplay').style.display = 'block';
+                startTimer();
+            } else {
+                document.getElementById('timeDisplay').style.display = 'none';
+            }
+            
+            // Start game loop
+            gameLoop();
+        }
+        
+        // Timer for timed mode
+        function startTimer() {
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timeLeft').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        // Game loop
+        function gameLoop() {
+            if (gameState !== 'playing') return;
+            
+            update();
+            render();
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        // Update game logic
+        function update() {
+            // Player movement
+            let moveSpeed = player.speed;
+            
+            // Turbo power-up
+            if (powerUps.turbo.active && powerUps.turbo.duration > 0) {
+                moveSpeed *= 1.5;
+                powerUps.turbo.duration--;
+                if (powerUps.turbo.duration <= 0) {
+                    powerUps.turbo.active = false;
+                }
+            }
+            
+            if (keys['ArrowLeft'] || touchControls.left) {
+                player.vx = -moveSpeed;
+            } else if (keys['ArrowRight'] || touchControls.right) {
+                player.vx = moveSpeed;
+            } else if (gyroEnabled && Math.abs(gyroTilt) > 0.1) {
+                // Gyroscope control
+                player.vx = gyroTilt * moveSpeed;
+            } else {
+                player.vx *= 0.8; // Friction
+            }
+            
+            // Double jump
+            if ((keys['ArrowUp'] || keys['Space']) && !player.onGround && powerUps.doubleJump.active && powerUps.doubleJump.uses > 0) {
+                player.vy = player.jumpPower;
+                powerUps.doubleJump.uses--;
+                if (powerUps.doubleJump.uses <= 0) {
+                    powerUps.doubleJump.active = false;
+                }
+                createJumpParticles(player.x + player.width/2, player.y + player.height);
+            }
+            
+            // Gravity
+            player.vy += 0.8;
+            
+            // Update position
+            player.x += player.vx;
+            player.y += player.vy;
+            
+            // Screen wrapping
+            if (player.x < 0) player.x = canvas.width;
+            if (player.x > canvas.width) player.x = 0;
+            
+            // Platform collision
+            player.onGround = false;
+            platforms.forEach(platform => {
+                if (platform.broken) return;
+                
+                if (player.x < platform.x + platform.width &&
+                    player.x + player.width > platform.x &&
+                    player.y < platform.y + platform.height &&
+                    player.y + player.height > platform.y &&
+                    player.vy > 0) {
+                    
+                    player.y = platform.y - player.height;
+                    player.onGround = true;
+                    
+                    // Platform-specific behavior
+                    switch (platform.type) {
+                        case 'bouncy':
+                            player.vy = player.jumpPower * 1.5; // Higher jump
+                            platform.bounceAnimation = 10;
+                            break;
+                        case 'fragile':
+                            player.vy = player.jumpPower;
+                            platform.broken = true; // Break after use
+                            break;
+                        case 'bonus':
+                            player.vy = player.jumpPower;
+                            coffeeCount += 5; // Bonus coffee
+                            score += 50;
+                            createCollectionParticles(platform.x + platform.width/2, platform.y);
+                            break;
+                        default:
+                            player.vy = player.jumpPower;
+                    }
+                    
+                    // Create jump particles
+                    createJumpParticles(player.x + player.width/2, player.y + player.height);
+                }
+                
+                // Update platform animations
+                if (platform.bounceAnimation > 0) {
+                    platform.bounceAnimation--;
+                }
+            });
+            
+            // Obstacle collision
+            obstacles.forEach(obstacle => {
+                if (obstacle.type === 'virus') {
+                    // Move virus
+                    obstacle.x += obstacle.moveDirection * obstacle.moveSpeed;
+                    if (obstacle.x <= 0 || obstacle.x >= canvas.width - obstacle.width) {
+                        obstacle.moveDirection *= -1;
+                    }
+                    obstacle.animation += 0.1;
+                }
+                
+                // Check collision with player
+                if (player.x < obstacle.x + obstacle.width &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y) {
+                    
+                    // Shield protection
+                    if (powerUps.shield.active && powerUps.shield.hits > 0) {
+                        powerUps.shield.hits--;
+                        if (powerUps.shield.hits <= 0) {
+                            powerUps.shield.active = false;
+                        }
+                        // Create shield effect particles
+                        createShieldParticles(player.x + player.width/2, player.y + player.height/2);
+                    } else {
+                        // Damage player (end game)
+                        endGame();
+                    }
+                }
+            });
+            
+            // Coffee collection
+            coffees.forEach(coffee => {
+                if (coffee.collected) return;
+                
+                let collected = false;
+                
+                // Normal collection
+                if (player.x < coffee.x + coffee.width &&
+                    player.x + player.width > coffee.x &&
+                    player.y < coffee.y + coffee.height &&
+                    player.y + player.height > coffee.y) {
+                    collected = true;
+                }
+                
+                // Magnet collection
+                if (powerUps.magnet.active && powerUps.magnet.duration > 0) {
+                    const distance = Math.sqrt(
+                        Math.pow(player.x + player.width/2 - coffee.x - coffee.width/2, 2) +
+                        Math.pow(player.y + player.height/2 - coffee.y - coffee.height/2, 2)
+                    );
+                    
+                    if (distance < 80) { // Magnet range
+                        // Move coffee towards player
+                        const dx = (player.x + player.width/2) - (coffee.x + coffee.width/2);
+                        const dy = (player.y + player.height/2) - (coffee.y + coffee.height/2);
+                        const speed = 3;
+                        
+                        coffee.x += (dx / distance) * speed;
+                        coffee.y += (dy / distance) * speed;
+                        
+                        if (distance < 20) {
+                            collected = true;
+                        }
+                    }
+                    
+                    powerUps.magnet.duration--;
+                    if (powerUps.magnet.duration <= 0) {
+                        powerUps.magnet.active = false;
+                    }
+                }
+                
+                if (collected) {
+                    coffee.collected = true;
+                    coffeeCount++;
+                    score += 10;
+                    gameStats.experience += 5; // Gain experience
+                    
+                    // Check for bonuses and level up
+                    checkBonuses();
+                    checkLevelUp();
+                    
+                    // Create collection particles
+                    createCollectionParticles(coffee.x + coffee.width/2, coffee.y + coffee.height/2);
+                }
+                
+                // Animate coffee beans
+                coffee.bounce += 0.1;
+            });
+            
+            // Improved camera system
+            camera.targetY = player.y - canvas.height * 0.6;
+            
+            // Add extra offset when falling fast
+            if (player.vy > 10) {
+                camera.targetY += 100;
+            }
+            
+            // Smooth camera movement
+            const cameraSpeed = 0.1;
+            if (camera.targetY < camera.y) {
+                camera.y += (camera.targetY - camera.y) * cameraSpeed;
+            }
+            
+            // Update height score
+            const newHeight = Math.max(height, Math.floor((canvas.height - player.y) / 10));
+            if (newHeight > height) {
+                height = newHeight;
+                
+                // Check for new height record
+                if (height > gameStats.bestHeight) {
+                    document.getElementById('bestHeight').classList.add('new-record');
+                }
+            }
+            
+            // Update particles
+            particles = particles.filter(particle => {
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.vy += 0.2;
+                particle.life--;
+                return particle.life > 0;
+            });
+            
+            // Game over condition
+            if (player.y > camera.y + canvas.height + 100) {
+                endGame();
+            }
+            
+            // Update power-up indicators
+            updatePowerUpIndicators();
+            
+            // Update challenges progress
+            updateChallengesProgress();
+            
+            // Update UI
+            document.getElementById('coffeeCount').textContent = coffeeCount;
+            document.getElementById('heightScore').textContent = height;
+            
+            // Check for new coffee record
+            if (coffeeCount > gameStats.bestCoffee) {
+                document.getElementById('bestCoffee').classList.add('new-record');
+            }
+        }
+        
+        // Render game
+        function render() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Save context for camera
+            ctx.save();
+            ctx.translate(0, -camera.y);
+            
+            // Draw platforms
+            const modeConfig = gameModes[gameMode];
+            platforms.forEach(platform => {
+                if (platform.y > camera.y - 50 && platform.y < camera.y + canvas.height + 50) {
+                    if (platform.broken) return;
+                    
+                    // Platform colors based on type
+                    switch (platform.type) {
+                        case 'bouncy':
+                            ctx.fillStyle = '#4CAF50'; // Green
+                            break;
+                        case 'fragile':
+                            ctx.fillStyle = '#F44336'; // Red
+                            break;
+                        case 'bonus':
+                            ctx.fillStyle = '#FFD700'; // Gold
+                            break;
+                        default:
+                            ctx.fillStyle = modeConfig.platformColor; // Brown
+                    }
+                    
+                    // Bounce animation for bouncy platforms
+                    let yOffset = 0;
+                    if (platform.type === 'bouncy' && platform.bounceAnimation > 0) {
+                        yOffset = Math.sin(platform.bounceAnimation * 0.5) * 3;
+                    }
+                    
+                    ctx.fillRect(platform.x, platform.y + yOffset, platform.width, platform.height);
+                    
+                    // Platform shine effect
+                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                    ctx.fillRect(platform.x, platform.y + yOffset, platform.width, 3);
+                    
+
+                }
+            });
+            
+            // Draw obstacles
+            obstacles.forEach(obstacle => {
+                if (obstacle.y > camera.y - 50 && obstacle.y < camera.y + canvas.height + 50) {
+                    if (obstacle.type === 'spike') {
+                        // Draw spike
+                        ctx.fillStyle = '#666';
+                        ctx.beginPath();
+                        ctx.moveTo(obstacle.x + obstacle.width/2, obstacle.y);
+                        ctx.lineTo(obstacle.x, obstacle.y + obstacle.height);
+                        ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        // Spike highlight
+                        ctx.fillStyle = '#999';
+                        ctx.beginPath();
+                        ctx.moveTo(obstacle.x + obstacle.width/2, obstacle.y);
+                        ctx.lineTo(obstacle.x + 3, obstacle.y + obstacle.height);
+                        ctx.lineTo(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height - 5);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                    } else if (obstacle.type === 'virus') {
+                        // Draw animated virus
+                        const pulse = Math.sin(obstacle.animation) * 0.1 + 1;
+                        const size = obstacle.width * pulse;
+                        
+                        ctx.fillStyle = '#8E44AD';
+                        ctx.beginPath();
+                        ctx.arc(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, size/2, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Virus spikes
+                        ctx.fillStyle = '#9B59B6';
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (i / 8) * Math.PI * 2 + obstacle.animation;
+                            const spikeX = obstacle.x + obstacle.width/2 + Math.cos(angle) * (size/2 + 3);
+                            const spikeY = obstacle.y + obstacle.height/2 + Math.sin(angle) * (size/2 + 3);
+                            
+                            ctx.beginPath();
+                            ctx.arc(spikeX, spikeY, 2, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+            });
+            
+            // Draw coffee beans
+            coffees.forEach(coffee => {
+                if (!coffee.collected && coffee.y > camera.y - 50 && coffee.y < camera.y + canvas.height + 50) {
+                    const bounceOffset = Math.sin(coffee.bounce) * 3;
+                    const centerX = coffee.x + coffee.width/2;
+                    const centerY = coffee.y + coffee.height/2 + bounceOffset;
+                    
+                    // Coffee bean shadow
+                    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                    ctx.beginPath();
+                    ctx.ellipse(centerX + 2, centerY + 2, coffee.width/2, coffee.height/2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Coffee bean gradient
+                    const gradient = ctx.createRadialGradient(
+                        centerX - 3, centerY - 3, 0,
+                        centerX, centerY, coffee.width/2
+                    );
+                    gradient.addColorStop(0, '#D2691E');
+                    gradient.addColorStop(0.7, '#8B4513');
+                    gradient.addColorStop(1, '#654321');
+                    
+                    // Coffee bean body
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY, coffee.width/2, coffee.height/2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Coffee bean highlight
+                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                    ctx.beginPath();
+                    ctx.ellipse(centerX - 3, centerY - 3, coffee.width/4, coffee.height/4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Coffee bean crack (characteristic line)
+                    ctx.strokeStyle = '#4A2C17';
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    
+                    // S-shaped crack
+                    ctx.moveTo(centerX - 6, centerY - 2);
+                    ctx.quadraticCurveTo(centerX, centerY, centerX + 6, centerY + 2);
+                    ctx.stroke();
+                    
+                    // Glow effect
+                    ctx.shadowColor = '#FFD700';
+                    ctx.shadowBlur = 8;
+                    ctx.strokeStyle = '#FFD700';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY, coffee.width/2 + 2, coffee.height/2 + 2, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+            });
+            
+            // Draw player (robot)
+            ctx.fillStyle = player.color;
+            
+            // Robot body
+            ctx.fillRect(player.x + 5, player.y + 10, 20, 15);
+            
+            // Robot head
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(player.x + 8, player.y, 14, 12);
+            
+            // Robot eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.x + 10, player.y + 3, 3, 3);
+            ctx.fillRect(player.x + 17, player.y + 3, 3, 3);
+            
+            // Robot antenna
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(player.x + 15, player.y);
+            ctx.lineTo(player.x + 15, player.y - 5);
+            ctx.stroke();
+            
+            // Antenna light
+            ctx.fillStyle = '#00FF00';
+            ctx.beginPath();
+            ctx.arc(player.x + 15, player.y - 5, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw particles
+            particles.forEach(particle => {
+                ctx.fillStyle = particle.color;
+                ctx.globalAlpha = particle.life / particle.maxLife;
+                ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+            });
+            ctx.globalAlpha = 1;
+            
+            // Restore context
+            ctx.restore();
+        }
+        
+        // Create jump particles
+        function createJumpParticles(x, y) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x + (Math.random() - 0.5) * 20,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: Math.random() * -3,
+                    size: Math.random() * 4 + 2,
+                    color: '#FFD700',
+                    life: 30,
+                    maxLife: 30
+                });
+            }
+        }
+        
+        // Create collection particles
+        function createCollectionParticles(x, y) {
+            for (let i = 0; i < 12; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    size: Math.random() * 3 + 1,
+                    color: '#8B4513',
+                    life: 40,
+                    maxLife: 40
+                });
+            }
+        }
+        
+        // Create shield particles
+        function createShieldParticles(x, y) {
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    size: Math.random() * 4 + 2,
+                    color: '#00BFFF',
+                    life: 30,
+                    maxLife: 30
+                });
+            }
+        }
+        
+        // End game
+        function endGame() {
+            gameState = 'gameOver';
+            
+            if (gameTimer) {
+                clearInterval(gameTimer);
+                gameTimer = null;
+            }
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            // Update stats
+            gameStats.gamesPlayed++;
+            gameStats.totalCoffee += coffeeCount;
+            
+            let newRecords = [];
+            
+            if (height > gameStats.bestHeight) {
+                gameStats.bestHeight = height;
+                newRecords.push('висота');
+            }
+            
+            if (coffeeCount > gameStats.bestCoffee) {
+                gameStats.bestCoffee = coffeeCount;
+                newRecords.push('кавові зерна');
+            }
+            
+            saveStats();
+            updateStatsDisplay();
+            
+            // Show game over screen
+            document.getElementById('finalCoffee').textContent = coffeeCount;
+            document.getElementById('finalHeight').textContent = height;
+            
+            if (gameModes[gameMode].timed) {
+                document.getElementById('finalTime').style.display = 'block';
+                document.getElementById('timeSpent').textContent = 60 - timeLeft;
+            } else {
+                document.getElementById('finalTime').style.display = 'none';
+            }
+            
+            // Show new record message (remove any existing ones first)
+            const existingRecord = document.querySelector('.new-record-message');
+            if (existingRecord) {
+                existingRecord.remove();
+            }
+            
+            if (newRecords.length > 0) {
+                const recordMessage = document.createElement('div');
+                recordMessage.className = 'new-record-message';
+                recordMessage.style.cssText = `
+                    color: #FFD700;
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin: 15px 0;
+                    animation: recordGlow 1s ease-in-out infinite alternate;
+                `;
+                recordMessage.textContent = `🏆 Новий рекорд: ${newRecords.join(', ')}!`;
+                document.querySelector('.final-score').appendChild(recordMessage);
+            }
+            
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+        
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            e.preventDefault();
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+        
+        // Touch controls
+        document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
+            touchControls.left = true;
+            e.preventDefault();
+        });
+        
+        document.getElementById('leftBtn').addEventListener('touchend', (e) => {
+            touchControls.left = false;
+            e.preventDefault();
+        });
+        
+        document.getElementById('rightBtn').addEventListener('touchstart', (e) => {
+            touchControls.right = true;
+            e.preventDefault();
+        });
+        
+        document.getElementById('rightBtn').addEventListener('touchend', (e) => {
+            touchControls.right = false;
+            e.preventDefault();
+        });
+        
+        // Mouse controls for desktop
+        document.getElementById('leftBtn').addEventListener('mousedown', () => {
+            touchControls.left = true;
+        });
+        
+        document.getElementById('leftBtn').addEventListener('mouseup', () => {
+            touchControls.left = false;
+        });
+        
+        document.getElementById('rightBtn').addEventListener('mousedown', () => {
+            touchControls.right = true;
+        });
+        
+        document.getElementById('rightBtn').addEventListener('mouseup', () => {
+            touchControls.right = false;
+        });
+        
+        // Menu buttons
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                startGame(mode);
+            });
+        });
+        
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            startGame(gameMode);
+        });
+        
+        document.getElementById('menuBtn').addEventListener('click', () => {
+            gameState = 'menu';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'flex';
+            document.querySelector('.game-container').style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        });
+        
+        // Bonus popup close button
+        document.getElementById('closeBonusBtn').addEventListener('click', () => {
+            closeBonusPopup();
+        });
+        
+        // Menu tabs functionality
+        document.querySelectorAll('.menu-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchMenuTab(tab.dataset.tab);
+            });
+        });
+        
+        // Settings toggles
+        let gameSettings = {
+            gyro: false,
+            sound: true,
+            vibration: true,
+            autoSeason: true,
+            showFPS: false
+        };
+        
+        // Load settings
+        function loadSettings() {
+            const saved = localStorage.getItem('perkyCoffeeSettings');
+            if (saved) {
+                gameSettings = { ...gameSettings, ...JSON.parse(saved) };
+            }
+            updateSettingsDisplay();
+        }
+        
+        // Save settings
+        function saveSettings() {
+            localStorage.setItem('perkyCoffeeSettings', JSON.stringify(gameSettings));
+        }
+        
+        // Update settings display
+        function updateSettingsDisplay() {
+            document.getElementById('gyroToggle').classList.toggle('active', gameSettings.gyro);
+            document.getElementById('soundToggle').classList.toggle('active', gameSettings.sound);
+            document.getElementById('vibrationToggle').classList.toggle('active', gameSettings.vibration);
+            document.getElementById('autoSeasonToggle').classList.toggle('active', gameSettings.autoSeason);
+            document.getElementById('fpsToggle').classList.toggle('active', gameSettings.showFPS);
+            
+            gyroEnabled = gameSettings.gyro;
+        }
+        
+        // Settings toggle handlers
+        document.getElementById('gyroToggle').addEventListener('click', () => {
+            if (!gameSettings.gyro) {
+                requestGyroPermission();
+            } else {
+                gameSettings.gyro = false;
+                gyroEnabled = false;
+            }
+            updateSettingsDisplay();
+            saveSettings();
+        });
+        
+        document.getElementById('soundToggle').addEventListener('click', () => {
+            gameSettings.sound = !gameSettings.sound;
+            updateSettingsDisplay();
+            saveSettings();
+        });
+        
+        document.getElementById('vibrationToggle').addEventListener('click', () => {
+            gameSettings.vibration = !gameSettings.vibration;
+            updateSettingsDisplay();
+            saveSettings();
+        });
+        
+        document.getElementById('autoSeasonToggle').addEventListener('click', () => {
+            gameSettings.autoSeason = !gameSettings.autoSeason;
+            updateSettingsDisplay();
+            saveSettings();
+        });
+        
+        document.getElementById('fpsToggle').addEventListener('click', () => {
+            gameSettings.showFPS = !gameSettings.showFPS;
+            updateSettingsDisplay();
+            saveSettings();
+        });
+        
+        // Shop categories
+        document.querySelectorAll('.shop-category').forEach(category => {
+            category.addEventListener('click', () => {
+                switchShopCategory(category.dataset.category);
+            });
+        });
+        
+        // Share ID from menu
+        document.getElementById('shareIdBtnMenu').addEventListener('click', () => {
+            sharePlayerId();
+        });
+        
+        // Shop screen
+        document.getElementById('shopBtn').addEventListener('click', () => {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('shopScreen').style.display = 'flex';
+            updateShopDisplay();
+        });
+        
+        document.getElementById('shopBackBtn').addEventListener('click', () => {
+            document.getElementById('shopScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'flex';
+        });
+        
+        // Challenges screen
+        document.getElementById('challengesBtn').addEventListener('click', () => {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('challengesScreen').style.display = 'flex';
+            updateChallengesDisplay();
+        });
+        
+        document.getElementById('challengesBackBtn').addEventListener('click', () => {
+            document.getElementById('challengesScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'flex';
+        });
+        
+        // Customization screen
+        document.getElementById('customizeBtn').addEventListener('click', () => {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('customizeScreen').style.display = 'flex';
+            updateCustomizeDisplay();
+        });
+        
+        document.getElementById('customizeBackBtn').addEventListener('click', () => {
+            document.getElementById('customizeScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'flex';
+        });
+        
+        // Friends screen
+        document.getElementById('friendsBtn').addEventListener('click', () => {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('friendsScreen').style.display = 'flex';
+            switchFriendsTab('friends');
+        });
+        
+        document.getElementById('friendsBackBtn').addEventListener('click', () => {
+            document.getElementById('friendsScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'flex';
+        });
+        
+        // Friends tabs
+        document.querySelectorAll('.friends-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchFriendsTab(tab.dataset.tab);
+            });
+        });
+        
+        // Add friend button
+        document.getElementById('addFriendBtn').addEventListener('click', () => {
+            const friendId = document.getElementById('friendIdInput').value.trim().toUpperCase();
+            if (friendId) {
+                addFriend(friendId);
+                document.getElementById('friendIdInput').value = '';
+            } else {
+                showNotification('❌ Введіть ID друга!', 'error');
+            }
+        });
+        
+        // Share ID button
+        document.getElementById('shareIdBtn').addEventListener('click', () => {
+            sharePlayerId();
+        });
+        
+        // Enter key for friend input
+        document.getElementById('friendIdInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('addFriendBtn').click();
+            }
+        });
+        
+        // Toggle season function
+        function toggleSeason() {
+            const seasons = ['spring', 'summer', 'autumn', 'winter'];
+            const currentIndex = seasons.indexOf(currentSeason);
+            const nextIndex = (currentIndex + 1) % seasons.length;
+            currentSeason = seasons[nextIndex];
+            
+            updateCustomizeDisplay();
+            showNotification(`🌍 Сезон змінено на ${seasonalThemes[currentSeason].name}!`, 'info');
+        }
+        
+        // Season toggle button
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleBtn = document.getElementById('toggleSeasonBtn');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', toggleSeason);
+            }
+        });
+        
+        // Prevent context menu on long press
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+        
+        // Prevent scrolling
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+        
+        // Update shop display
+        function updateShopDisplay() {
+            document.querySelectorAll('.shop-item').forEach(item => {
+                const powerupType = item.dataset.powerup;
+                const powerup = powerUps[powerupType];
+                
+                const levelDisplay = item.querySelector('.level-display');
+                const buyBtn = item.querySelector('.shop-buy-btn');
+                
+                levelDisplay.textContent = powerup.level;
+                
+                if (powerup.level >= powerup.maxLevel) {
+                    buyBtn.textContent = 'МАКС РІВЕНЬ';
+                    buyBtn.disabled = true;
+                } else if (gameStats.coins < powerup.cost) {
+                    buyBtn.disabled = true;
+                } else {
+                    buyBtn.disabled = false;
+                }
+                
+                buyBtn.onclick = () => buyPowerUp(powerupType);
+            });
+        }
+        
+        // Buy power-up
+        function buyPowerUp(type) {
+            const powerup = powerUps[type];
+            
+            if (gameStats.coins >= powerup.cost && powerup.level < powerup.maxLevel) {
+                gameStats.coins -= powerup.cost;
+                powerup.level++;
+                powerup.cost = Math.floor(powerup.cost * 1.5); // Increase cost
+                
+                saveStats();
+                updateStatsDisplay();
+                updateShopDisplay();
+                
+                // Show purchase notification
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 30%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: linear-gradient(135deg, #4CAF50, #45a049);
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 15px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    z-index: 1000;
+                `;
+                notification.textContent = `✅ Прокачка куплена!`;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => notification.remove(), 2000);
+            }
+        }
+        
+        // Update challenges display
+        function updateChallengesDisplay() {
+            const dailyList = document.getElementById('dailyChallengesList');
+            const weeklyList = document.getElementById('weeklyChallengesList');
+            
+            dailyList.innerHTML = '';
+            weeklyList.innerHTML = '';
+            
+            dailyChallenges.forEach(challenge => {
+                const item = document.createElement('div');
+                item.className = `challenge-item ${challenge.completed ? 'challenge-completed' : ''}`;
+                
+                const progress = Math.min(100, (challenge.progress / challenge.target) * 100);
+                
+                item.innerHTML = `
+                    <div class="challenge-name">${challenge.name}</div>
+                    <div class="challenge-progress">
+                        <div class="challenge-progress-bar" style="width: ${progress}%"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>${challenge.progress}/${challenge.target}</span>
+                        <span class="challenge-reward">${challenge.completed ? '✅' : `+${challenge.reward}🪙`}</span>
+                    </div>
+                `;
+                
+                dailyList.appendChild(item);
+            });
+            
+            weeklyGoals.forEach(goal => {
+                const item = document.createElement('div');
+                item.className = `challenge-item ${goal.completed ? 'challenge-completed' : ''}`;
+                
+                const progress = Math.min(100, (goal.progress / goal.target) * 100);
+                
+                item.innerHTML = `
+                    <div class="challenge-name">${goal.name}</div>
+                    <div class="challenge-progress">
+                        <div class="challenge-progress-bar" style="width: ${progress}%"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>${goal.progress}/${goal.target}</span>
+                        <span class="challenge-reward">${goal.completed ? '✅' : `+${goal.reward}🪙`}</span>
+                    </div>
+                `;
+                
+                weeklyList.appendChild(item);
+            });
+        }
+        
+        // Update player info display
+        function updatePlayerInfo() {
+            document.getElementById('playerNameDisplay').textContent = friendsData.playerName;
+            document.getElementById('playerIdDisplay').textContent = friendsData.playerId;
+        }
+        
+        // Add friend function
+        function addFriend(friendId) {
+            if (friendId === friendsData.playerId) {
+                showNotification('❌ Не можна додати себе в друзі!', 'error');
+                return;
+            }
+            
+            if (friendsData.friends.some(f => f.id === friendId)) {
+                showNotification('❌ Цей гравець вже у ваших друзях!', 'error');
+                return;
+            }
+            
+            if (friendsData.sentInvites.includes(friendId)) {
+                showNotification('❌ Запрошення вже відправлено!', 'error');
+                return;
+            }
+            
+            // Simulate sending invite
+            friendsData.sentInvites.push(friendId);
+            
+            // Simulate receiving invite (for demo purposes)
+            setTimeout(() => {
+                const demoFriend = {
+                    id: friendId,
+                    name: 'Друг' + Math.floor(Math.random() * 100),
+                    bestHeight: Math.floor(Math.random() * 500) + 100,
+                    bestCoffee: Math.floor(Math.random() * 200) + 50,
+                    level: Math.floor(Math.random() * 10) + 1,
+                    online: Math.random() > 0.5
+                };
+                
+                friendsData.friends.push(demoFriend);
+                friendsData.sentInvites = friendsData.sentInvites.filter(id => id !== friendId);
+                
+                // Add bonus for adding friend
+                gameStats.coins += 25;
+                
+                saveStats();
+                updateStatsDisplay();
+                updateFriendsDisplay();
+                showNotification('✅ Друга додано! +25 монет бонус!', 'success');
+            }, 2000);
+            
+            saveStats();
+            updateFriendsDisplay();
+            showNotification('📤 Запрошення відправлено!', 'info');
+        }
+        
+        // Remove friend function
+        function removeFriend(friendId) {
+            friendsData.friends = friendsData.friends.filter(f => f.id !== friendId);
+            saveStats();
+            updateFriendsDisplay();
+            showNotification('❌ Друга видалено', 'info');
+        }
+        
+        // Update friends display
+        function updateFriendsDisplay() {
+            const friendsList = document.getElementById('friendsList');
+            
+            if (friendsData.friends.length === 0) {
+                friendsList.innerHTML = `
+                    <div class="empty-state" style="text-align: center; color: rgba(255,255,255,0.6); padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">👥</div>
+                        <div style="font-size: 16px; margin-bottom: 10px;">Поки що немає друзів</div>
+                        <div style="font-size: 14px;">Додайте друзів за їх ID для спільних ігор!</div>
+                    </div>
+                `;
+            } else {
+                friendsList.innerHTML = friendsData.friends.map(friend => `
+                    <div class="friend-item">
+                        <div class="friend-info">
+                            <div class="friend-avatar">🤖</div>
+                            <div class="friend-details">
+                                <div class="friend-name">${friend.name} ${friend.online ? '🟢' : '⚫'}</div>
+                                <div class="friend-stats">🏆 ${friend.bestHeight}м | ☕ ${friend.bestCoffee} | ⚡ Рівень ${friend.level}</div>
+                            </div>
+                        </div>
+                        <div class="friend-actions">
+                            <button class="friend-btn" onclick="challengeFriend('${friend.id}')">⚔️</button>
+                            <button class="friend-btn remove" onclick="removeFriend('${friend.id}')">❌</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            updateLeaderboard();
+            updateCooperativeChallenges();
+        }
+        
+        // Update leaderboard
+        function updateLeaderboard() {
+            const leaderboard = document.getElementById('friendsLeaderboard');
+            
+            // Combine player and friends data
+            const allPlayers = [
+                {
+                    id: friendsData.playerId,
+                    name: friendsData.playerName + ' (Ви)',
+                    bestHeight: gameStats.bestHeight,
+                    bestCoffee: gameStats.bestCoffee,
+                    level: gameStats.level
+                },
+                ...friendsData.friends
+            ];
+            
+            // Sort by best height
+            allPlayers.sort((a, b) => b.bestHeight - a.bestHeight);
+            
+            leaderboard.innerHTML = allPlayers.map((player, index) => {
+                const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
+                const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
+                
+                return `
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank ${rankClass}">${rankEmoji}</div>
+                        <div class="friend-avatar">🤖</div>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-name">${player.name}</div>
+                            <div class="leaderboard-stats">🏆 ${player.bestHeight}м | ☕ ${player.bestCoffee} | ⚡ Рівень ${player.level}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Update cooperative challenges
+        function updateCooperativeChallenges() {
+            const coopList = document.getElementById('cooperativeChallengesList');
+            
+            // Update progress based on friends' stats
+            cooperativeChallenges.forEach(challenge => {
+                if (challenge.completed) return;
+                
+                switch(challenge.id) {
+                    case 'team_collect_500':
+                        challenge.progress = gameStats.totalCoffee + 
+                            friendsData.friends.reduce((sum, friend) => sum + (friend.bestCoffee || 0), 0);
+                        break;
+                    case 'team_height_1000':
+                        challenge.progress = gameStats.bestHeight + 
+                            friendsData.friends.reduce((sum, friend) => sum + (friend.bestHeight || 0), 0);
+                        break;
+                    case 'team_games_20':
+                        challenge.progress = gameStats.gamesPlayed + 
+                            friendsData.friends.reduce((sum, friend) => sum + (friend.gamesPlayed || 0), 0);
+                        break;
+                }
+                
+                if (challenge.progress >= challenge.target && !challenge.completed) {
+                    challenge.completed = true;
+                    gameStats.coins += challenge.reward;
+                    showNotification(`🎉 Командний челендж виконано! +${challenge.reward} монет!`, 'success');
+                }
+            });
+            
+            coopList.innerHTML = cooperativeChallenges.map(challenge => {
+                const progress = Math.min(100, (challenge.progress / challenge.target) * 100);
+                
+                return `
+                    <div class="coop-challenge-item ${challenge.completed ? 'challenge-completed' : ''}">
+                        <div class="coop-challenge-header">
+                            <div class="coop-challenge-name">${challenge.name}</div>
+                            <div class="coop-challenge-reward">${challenge.completed ? '✅' : `+${challenge.reward}🪙`}</div>
+                        </div>
+                        <div class="coop-challenge-description">${challenge.description}</div>
+                        <div class="coop-participants">
+                            <div class="participant-avatar">🤖</div>
+                            ${friendsData.friends.slice(0, 5).map(f => `<div class="participant-avatar">🤖</div>`).join('')}
+                            ${friendsData.friends.length > 5 ? `<div class="participant-avatar">+${friendsData.friends.length - 5}</div>` : ''}
+                        </div>
+                        <div class="challenge-progress">
+                            <div class="challenge-progress-bar" style="width: ${progress}%"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                            <span>${challenge.progress}/${challenge.target}</span>
+                            <span style="font-size: 12px; color: #666;">${friendsData.friends.length + 1} учасників</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Challenge friend function
+        function challengeFriend(friendId) {
+            const friend = friendsData.friends.find(f => f.id === friendId);
+            if (friend) {
+                showNotification(`⚔️ Виклик відправлено гравцю ${friend.name}!`, 'info');
+                
+                // Add bonus for challenging
+                gameStats.coins += 10;
+                saveStats();
+                updateStatsDisplay();
+            }
+        }
+        
+        // Share player ID function
+        function sharePlayerId() {
+            const shareText = `Приєднуйся до мене в Perky Coffee Jump! Мій ID: ${friendsData.playerId}`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Perky Coffee Jump',
+                    text: shareText
+                });
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareText).then(() => {
+                    showNotification('📋 ID скопійовано в буфер обміну!', 'success');
+                });
+            } else {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = shareText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showNotification('📋 ID скопійовано в буфер обміну!', 'success');
+            }
+        }
+        
+        // Show notification function
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const colors = {
+                success: 'linear-gradient(135deg, #4CAF50, #45a049)',
+                error: 'linear-gradient(135deg, #f44336, #d32f2f)',
+                info: 'linear-gradient(135deg, #2196F3, #1976D2)'
+            };
+            
+            notification.style.cssText = `
+                position: fixed;
+                top: 20%;
+                left: 50%;
+                transform: translateX(-50%);
+                background: ${colors[type]};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 15px;
+                font-size: 14px;
+                font-weight: bold;
+                z-index: 1000;
+                animation: slideDown 3s ease-out forwards;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+        
+        // Switch friends tabs
+        function switchFriendsTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.friends-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tab === tabName);
+            });
+            
+            // Update tab content
+            document.querySelectorAll('.friends-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            document.getElementById(tabName + 'Tab').style.display = 'block';
+            
+            // Update content based on tab
+            switch(tabName) {
+                case 'friends':
+                    updateFriendsDisplay();
+                    break;
+                case 'leaderboard':
+                    updateLeaderboard();
+                    break;
+                case 'coop':
+                    updateCooperativeChallenges();
+                    break;
+            }
+        }
+
+        // Update customization display
+        function updateCustomizeDisplay() {
+            // Update skin selection
+            document.querySelectorAll('[data-skin]').forEach(item => {
+                item.classList.toggle('active', item.dataset.skin === character.skin);
+                
+                const costElement = item.querySelector('.customize-cost');
+                const skinCost = getSkinCost(item.dataset.skin);
+                
+                item.onclick = () => {
+                    if (item.dataset.skin === 'default' || gameStats.coins >= skinCost) {
+                        if (item.dataset.skin !== 'default' && character.skin !== item.dataset.skin) {
+                            gameStats.coins -= skinCost;
+                            showNotification(`✅ Скін "${item.querySelector('.customize-name').textContent}" куплено!`, 'success');
+                        }
+                        character.skin = item.dataset.skin;
+                        saveStats();
+                        updateStatsDisplay();
+                        updateCustomizeDisplay();
+                    } else {
+                        showNotification('❌ Недостатньо монет для покупки цього скіна!', 'error');
+                    }
+                };
+                
+                // Update visual state based on affordability
+                if (item.dataset.skin !== 'default' && gameStats.coins < skinCost && character.skin !== item.dataset.skin) {
+                    item.style.opacity = '0.6';
+                    item.style.cursor = 'not-allowed';
+                } else {
+                    item.style.opacity = '1';
+                    item.style.cursor = 'pointer';
+                }
+            });
+            
+            // Update effect selection
+            document.querySelectorAll('[data-effect]').forEach(item => {
+                item.classList.toggle('active', item.dataset.effect === character.jumpEffect);
+                
+                const costElement = item.querySelector('.customize-cost');
+                const effectCost = getEffectCost(item.dataset.effect);
+                
+                item.onclick = () => {
+                    if (item.dataset.effect === 'default' || gameStats.coins >= effectCost) {
+                        if (item.dataset.effect !== 'default' && character.jumpEffect !== item.dataset.effect) {
+                            gameStats.coins -= effectCost;
+                            showNotification(`✅ Ефект "${item.querySelector('.customize-name').textContent}" куплено!`, 'success');
+                        }
+                        character.jumpEffect = item.dataset.effect;
+                        saveStats();
+                        updateStatsDisplay();
+                        updateCustomizeDisplay();
+                    } else {
+                        showNotification('❌ Недостатньо монет для покупки цього ефекту!', 'error');
+                    }
+                };
+                
+                // Update visual state based on affordability
+                if (item.dataset.effect !== 'default' && gameStats.coins < effectCost && character.jumpEffect !== item.dataset.effect) {
+                    item.style.opacity = '0.6';
+                    item.style.cursor = 'not-allowed';
+                } else {
+                    item.style.opacity = '1';
+                    item.style.cursor = 'pointer';
+                }
+            });
+        }
+        
+        // Get skin cost
+        function getSkinCost(skinType) {
+            const skinCosts = {
+                'default': 0,
+                'golden': 500,
+                'ninja': 750,
+                'cyber': 600,
+                'alien': 800,
+                'pirate': 650,
+                'knight': 700,
+                'wizard': 850,
+                'astronaut': 900,
+                'vampire': 750,
+                'superhero': 1000,
+                'detective': 550
+            };
+            return skinCosts[skinType] || 500;
+        }
+        
+        // Get effect cost
+        function getEffectCost(effectType) {
+            const effectCosts = {
+                'default': 0,
+                'fire': 300,
+                'rainbow': 400,
+                'lightning': 350,
+                'hearts': 250,
+                'snowflakes': 320,
+                'magic': 450,
+                'bubbles': 280,
+                'coins': 380,
+                'flowers': 300,
+                'diamonds': 500,
+                'smoke': 200
+            };
+            return effectCosts[effectType] || 300;
+        }
+        
+        // Switch menu tabs
+        function switchMenuTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.menu-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tab === tabName);
+            });
+            
+            // Update tab content
+            document.querySelectorAll('#playTab, #progressTab, #socialTab, #settingsTab').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            document.getElementById(tabName + 'Tab').style.display = 'block';
+            
+            // Update content based on tab
+            if (tabName === 'progress') {
+                updateStatsDisplay();
+            } else if (tabName === 'social') {
+                updatePlayerInfo();
+            }
+        }
+        
+        // Switch shop categories
+        function switchShopCategory(categoryName) {
+            // Update category buttons
+            document.querySelectorAll('.shop-category').forEach(category => {
+                category.classList.toggle('active', category.dataset.category === categoryName);
+            });
+            
+            // Update category content
+            document.querySelectorAll('#powerupsCategory, #boostersCategory, #specialCategory').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            document.getElementById(categoryName + 'Category').style.display = 'block';
+        }
+        
+        // Update player info in menu
+        function updatePlayerInfo() {
+            document.getElementById('menuPlayerId').textContent = friendsData.playerId;
+            document.getElementById('menuPlayerLevel').textContent = gameStats.level;
+        }
+        
+        // Enhanced shop display with progress bars
+        function updateShopDisplay() {
+            document.querySelectorAll('.shop-item[data-powerup]').forEach(item => {
+                const powerupType = item.dataset.powerup;
+                const powerup = powerUps[powerupType];
+                
+                const levelDisplay = item.querySelector('.level-display');
+                const buyBtn = item.querySelector('.shop-buy-btn');
+                const priceDisplay = item.querySelector('.shop-price');
+                const progressFill = item.querySelector('.progress-fill');
+                
+                levelDisplay.textContent = powerup.level;
+                
+                // Update progress bar
+                const progress = (powerup.level / powerup.maxLevel) * 100;
+                progressFill.style.width = progress + '%';
+                
+                if (powerup.level >= powerup.maxLevel) {
+                    buyBtn.textContent = 'МАКС';
+                    buyBtn.disabled = true;
+                    priceDisplay.textContent = 'МАКС РІВЕНЬ';
+                } else {
+                    priceDisplay.textContent = powerup.cost + '🪙';
+                    if (gameStats.coins < powerup.cost) {
+                        buyBtn.disabled = true;
+                        buyBtn.textContent = 'Недостатньо';
+                    } else {
+                        buyBtn.disabled = false;
+                        buyBtn.textContent = 'Купити';
+                    }
+                }
+                
+                buyBtn.onclick = () => buyPowerUp(powerupType);
+            });
+        }
+        
+        // Vibration function
+        function vibrate(pattern = [100]) {
+            if (gameSettings.vibration && navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+        
+        // Sound effect function (placeholder)
+        function playSound(soundName) {
+            if (gameSettings.sound) {
+                // Sound effects would be implemented here
+                // For now, we'll use vibration as feedback
+                vibrate([50]);
+            }
+        }
+        
+        // Initialize game
+        resizeCanvas();
+        loadStats();
+        loadSettings();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'983b1d9a5640b379',t:'MTc1ODY0MTc2NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
