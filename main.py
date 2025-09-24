@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Змінні середовища
-BOT_TOKEN = os.getenv('BOT_TOKEN', '8352289810:AAGP6zB_zMd9UMra1vxc-fgMv2m-hr8piG4')
+BOT_TOKEN = os.getenv('BOT_TOKEN', '8253714238:AAH3hSxNpvb61lvo3PK0ikKThJ7494KGcMo')
 WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://perky-jump-bot-production.up.railway.app')
 PORT = int(os.getenv('PORT', 8000))
 
