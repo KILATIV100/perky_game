@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, Optional
 
 import sqlite3
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, Bot
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 from telegram.constants import ParseMode
 import asyncio
@@ -168,8 +168,6 @@ class PerkyBot:
 perky_bot = PerkyBot()
 
 # API endpoints
-# Обслуговування статичних файлів з папки 'static'
-# Це замінює старий ендпоінт /game
 app.mount("/game", StaticFiles(directory="static", html=True), name="static")
 
 
@@ -234,12 +232,10 @@ async def get_leaderboard_endpoint():
         logger.error(f"Error getting leaderboard: {e}")
         raise HTTPException(status_code=500, detail="Failed to get leaderboard")
 
-# Змінений вебхук-ендпоінт для коректної роботи з Application
 @app.post(f"/{BOT_TOKEN}")
 async def telegram_webhook(request: Request):
     """Webhook для Telegram бота"""
     try:
-        # Важливо: перевірка, чи Application вже ініціалізовано
         if not perky_bot.application:
             logger.warning("Webhook received, but bot not initialized yet. Returning 503.")
             return {"status": "bot not initialized yet"}, 503
@@ -247,7 +243,6 @@ async def telegram_webhook(request: Request):
         json_data = await request.json()
         update = Update.de_json(json_data, perky_bot.application.bot)
         
-        # Обробка оновлення через Application
         async with perky_bot.application:
             await perky_bot.application.process_update(update)
 
@@ -261,22 +256,19 @@ async def setup_bot():
     try:
         perky_bot.application = Application.builder().token(BOT_TOKEN).build()
         
-        # Додати обробники
         perky_bot.application.add_handler(CommandHandler("start", perky_bot.start))
         perky_bot.application.add_handler(CallbackQueryHandler(perky_bot.button_callback))
         perky_bot.application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler))
-
-        # Налаштувати webhook
-# Змінити з webhook_url = f"{WEBAPP_URL}/{BOT_TOKEN}"
-webhook_url = f"https://perky.up.railway.app/{BOT_TOKEN}"
-await perky_bot.application.bot.set_webhook(webhook_url)
+        
+        # Виправляємо URL для вебхука, щоб він вів на кореневий шлях
+        webhook_url = f"{WEBAPP_URL.replace('/game', '')}/{BOT_TOKEN}"
+        await perky_bot.application.bot.set_webhook(webhook_url)
         
         logger.info(f"Webhook set to: {webhook_url}")
     except Exception as e:
         logger.error(f"Error during bot setup: {e}")
         raise
 
-# Додаємо обробку даних з WebApp
 async def web_app_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обробка даних, надісланих з WebApp"""
     data = json.loads(update.effective_message.web_app_data.data)
@@ -291,7 +283,6 @@ async def web_app_data_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     await context.bot.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
     logger.info(f"Received game data from user {user_id}: score={score}, beans={collected_beans}")
 
-# Запуск бота і вебхука під час старту FastAPI
 @app.on_event("startup")
 async def startup_event():
     """Виконується при запуску FastAPI"""
@@ -301,6 +292,5 @@ async def startup_event():
     await setup_bot()
     logger.info("Bot setup completed!")
     
-# Запуск FastAPI сервера (для локального тестування)
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=PORT)
