@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Dict, Optional
 
 import sqlite3
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters, PreCheckoutQueryHandler, ShippingQueryHandler
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, Bot
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 from telegram.constants import ParseMode
 import asyncio
 from fastapi import FastAPI, Request, HTTPException
@@ -27,6 +27,13 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')
 WEBAPP_URL = os.getenv('WEBAPP_URL')
 PORT = int(os.getenv('PORT', 8000))
 
+if not BOT_TOKEN:
+    logger.error("BOT_TOKEN is not set!")
+    exit(1)
+if not WEBAPP_URL:
+    logger.error("WEBAPP_URL is not set!")
+    exit(1)
+
 # FastAPI додаток
 app = FastAPI(title="Perky Coffee Jump WebApp")
 
@@ -35,1086 +42,220 @@ class GameStats(BaseModel):
     user_id: int
     score: int
     collected_beans: int
-
-class UserStats(BaseModel):
-    user_id: int
-    username: Optional[str] = None
-    max_height: int = 0
-    total_beans: int = 0
-    games_played: int = 0
-    last_played: Optional[str] = None
+    achievements: Optional[str] = None
 
 # База даних
-class Database:
-    def __init__(self, db_path: str = "perky_jump.db"):
-        self.db_path = db_path
-        self.init_database()
-    
-    def init_database(self):
-        """Ініціалізація бази даних"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # Таблиця користувачів
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id INTEGER PRIMARY KEY,
-                    username TEXT,
-                    first_name TEXT,
-                    max_height INTEGER DEFAULT 0,
-                    total_beans INTEGER DEFAULT 0,
-                    games_played INTEGER DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_played TIMESTAMP
-                )
-            ''')
-            
-            # Таблиця ігор
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS games (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    score INTEGER,
-                    beans_collected INTEGER,
-                    played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users (user_id)
-                )
-            ''')
-            
-            # Таблиця замовлень
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS orders (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    product_name TEXT,
-                    price INTEGER,
-                    status TEXT DEFAULT 'pending',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users (user_id)
-                )
-            ''')
-            
-            conn.commit()
-    
-    def get_user_stats(self, user_id: int) -> Dict:
-        """Отримати статистику користувача"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT user_id, username, max_height, total_beans, games_played, last_played
-                FROM users WHERE user_id = ?
-            ''', (user_id,))
-            
-            result = cursor.fetchone()
-            if result:
-                return {
-                    'user_id': result[0],
-                    'username': result[1],
-                    'max_height': result[2],
-                    'total_beans': result[3],
-                    'games_played': result[4],
-                    'last_played': result[5]
-                }
-            return None
-    
-    def save_user(self, user_id: int, username: str = None, first_name: str = None):
-        """Зберегти або оновити користувача"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT OR REPLACE INTO users (user_id, username, first_name)
-                VALUES (?, ?, ?)
-            ''', (user_id, username, first_name))
-            conn.commit()
-    
-    def save_game_result(self, user_id: int, score: int, beans_collected: int):
-        """Зберегти результат гри"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # Додати запис про гру
-            cursor.execute('''
-                INSERT INTO games (user_id, score, beans_collected)
-                VALUES (?, ?, ?)
-            ''', (user_id, score, beans_collected))
-            
-            # Оновити статистику користувача
-            cursor.execute('''
-                UPDATE users SET 
-                    max_height = MAX(max_height, ?),
-                    total_beans = total_beans + ?,
-                    games_played = games_played + 1,
-                    last_played = CURRENT_TIMESTAMP
-                WHERE user_id = ?
-            ''', (score, beans_collected, user_id))
-            
-            conn.commit()
-    
-    def get_leaderboard(self, limit: int = 10) -> list:
-        """Отримати таблицю лідерів"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT username, first_name, max_height, total_beans
-                FROM users 
-                WHERE games_played > 0
-                ORDER BY max_height DESC
-                LIMIT ?
-            ''', (limit,))
-            
-            return cursor.fetchall()
+def get_db_connection():
+    conn = sqlite3.connect('perky_game.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
-# Ініціалізація бази даних
-db = Database()
+def init_db():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS stats (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                high_score INTEGER NOT NULL,
+                total_beans INTEGER NOT NULL,
+                games_played INTEGER NOT NULL,
+                achievements TEXT
+            )
+        """)
+        conn.commit()
+    logger.info("Database initialized.")
 
-# Товари в магазині
-SHOP_ITEMS = {
-    'coffee_cup': {
-        'name': '☕ Кавова чашка Perky',
-        'description': 'Стильна керамічна чашка з логотипом Perky Coffee Jump',
-        'price': 25000,  # в копійках (250 грн)
-        'currency': 'UAH',
-        'photo': 'https://example.com/coffee_cup.jpg'
-    },
-    'tshirt': {
-        'name': '👕 Футболка Perky',
-        'description': 'Комфортна бавовняна футболка з унікальним дизайном гри',
-        'price': 45000,  # 450 грн
-        'currency': 'UAH',
-        'photo': 'https://example.com/tshirt.jpg'
-    },
-    'travel_mug': {
-        'name': '🥤 Термокружка Perky',
-        'description': 'Подорожня термокружка для справжніх кавоманів',
-        'price': 35000,  # 350 грн
-        'currency': 'UAH',
-        'photo': 'https://example.com/travel_mug.jpg'
-    },
-    'coffee_beans': {
-        'name': '🍵 Кава Perky Blend',
-        'description': 'Ексклюзивна суміш кавових зерен від Perky Coffee',
-        'price': 30000,  # 300 грн
-        'currency': 'UAH',
-        'photo': 'https://example.com/coffee_beans.jpg'
-    }
-}
-
-# Telegram Bot функції
-class PerkyCoffeeBot:
+# Глобальний клас для зберігання стану бота
+class PerkyBot:
     def __init__(self):
-        self.application = None
-    
+        self.application: Optional[Application] = None
+
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обробка команди /start"""
+        """Обробник команди /start"""
         user = update.effective_user
-        
-        # Зберегти користувача в БД
-        db.save_user(user.id, user.username, user.first_name)
-        
-        welcome_message = f"""
-🤖☕ Ласкаво просимо до Perky Coffee Jump!
-
-Привіт, {user.first_name}! 👋
-
-Це захоплююча платформер-гра, де ти граєш за кавового робота, який намагається підстрибнути якомога вище, збираючи кавові зерна!
-
-🎮 Як грати:
-• Стрибай з платформи на платформу
-• Збирай кавові зерна ☕
-• Намагайся досягти максимальної висоти!
-
-Обери дію нижче:
-        """
-        
-        keyboard = [
-            [InlineKeyboardButton("🎮 Почати гру", web_app=WebAppInfo(url=f"{WEBAPP_URL}/game"))],
-            [InlineKeyboardButton("📊 Статистика", callback_data='stats')],
-            [InlineKeyboardButton("🛒 Магазин", callback_data='shop')],
-            [InlineKeyboardButton("❓ Допомога", callback_data='help')]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await update.message.reply_text(
-            welcome_message,
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.HTML
+        welcome_message = (
+            f"Привіт, {user.full_name}! 👋\n\n"
+            "Я - **Perky Coffee Jump Bot**! 🤖☕\n\n"
+            "Моя мета - допомогти тобі стрибати, збирати кавові зерна та бити рекорди!\n"
+            "Готовий до гри? Просто натисни на кнопку нижче! 👇"
         )
-    
+        keyboard = [
+            [InlineKeyboardButton("🎮 Почати гру", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [
+                InlineKeyboardButton("📊 Статистика", callback_data='stats'),
+                InlineKeyboardButton("🏆 Таблиця лідерів", callback_data='leaderboard')
+            ],
+            [
+                InlineKeyboardButton("🛒 Магазин", callback_data='shop'),
+                InlineKeyboardButton("❓ Допомога", callback_data='help')
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT OR IGNORE INTO stats (user_id, username, high_score, total_beans, games_played, achievements) VALUES (?, ?, 0, 0, 0, '{}')", (user.id, user.username))
+            conn.commit()
+
+        await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
+        logger.info(f"User {user.id} started the bot.")
+
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обробка натискань кнопок"""
+        """Обробник натискання кнопок"""
         query = update.callback_query
-        await query.answer()
-        
-        if query.data == 'stats':
-            await self.show_stats(query)
-        elif query.data == 'shop':
-            await self.show_shop(query)
-        elif query.data == 'help':
-            await self.show_help(query)
-        elif query.data == 'leaderboard':
-            await self.show_leaderboard(query)
-        elif query.data == 'back_main':
-            await self.back_to_main(query)
-        elif query.data.startswith('buy_'):
-            item_id = query.data.replace('buy_', '')
-            await self.buy_item(query, item_id)
-    
-    async def show_stats(self, query):
-        """Показати статистику користувача"""
         user_id = query.from_user.id
-        stats = db.get_user_stats(user_id)
-        
-        if not stats or stats['games_played'] == 0:
-            stats_text = """
-📊 Твоя статистика
+        await query.answer()
 
-🎮 Ігор зіграно: 0
-🏔️ Максимальна висота: 0 м
-☕ Зібрано зерен: 0
-📅 Остання гра: Ще не грав
+        if query.data == 'stats':
+            await self.show_stats(user_id, context)
+        elif query.data == 'leaderboard':
+            await self.show_leaderboard(context)
+        elif query.data == 'shop':
+            await self.show_shop(context)
+        elif query.data == 'help':
+            await self.show_help(context)
 
-Час почати свою першу гру! 🚀
-            """
-        else:
-            last_played = stats['last_played']
-            if last_played:
-                last_played = datetime.fromisoformat(last_played).strftime("%d.%m.%Y %H:%M")
-            
-            stats_text = f"""
-📊 Твоя статистика
+    async def show_stats(self, user_id, context):
+        """Показує статистику користувача"""
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM stats WHERE user_id = ?", (user_id,))
+            user_stats = cursor.fetchone()
 
-🎮 Ігор зіграно: {stats['games_played']}
-🏔️ Максимальна висота: {stats['max_height']} м
-☕ Зібрано зерен: {stats['total_beans']}
-📅 Остання гра: {last_played or 'Невідомо'}
-
-Продовжуй грати та покращуй свої рекорди! 🏆
-            """
-        
-        keyboard = [
-            [InlineKeyboardButton("🏆 Таблиця лідерів", callback_data='leaderboard')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='back_main')]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            stats_text,
-            reply_markup=reply_markup
-        )
-    
-    async def show_leaderboard(self, query):
-        """Показати таблицю лідерів"""
-        leaderboard = db.get_leaderboard(10)
-        
-        if not leaderboard:
-            leaderboard_text = """
-🏆 Таблиця лідерів
-
-Поки що немає записів.
-Стань першим! 🚀
-            """
-        else:
-            leaderboard_text = "🏆 Топ-10 гравців:\n\n"
-            
-            for i, (username, first_name, max_height, total_beans) in enumerate(leaderboard, 1):
-                name = username or first_name or "Невідомий"
-                emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{emoji} {name}\n🏔️ {max_height} м | ☕ {total_beans} зерен\n\n"
-        
-        keyboard = [
-            [InlineKeyboardButton("↩️ Назад до статистики", callback_data='stats')]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            leaderboard_text,
-            reply_markup=reply_markup
-        )
-    
-    async def show_shop(self, query):
-        """Показати магазин"""
-        shop_text = """
-🛒 Магазин Perky Coffee
-
-Купуй ексклюзивний мерч та кавові товари!
-Всі покупки підтримують розвиток гри ❤️
-        """
-        
-        keyboard = []
-        for item_id, item in SHOP_ITEMS.items():
-            price_grn = item['price'] // 100
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"{item['name']} - {price_grn} грн", 
-                    callback_data=f'buy_{item_id}'
-                )
-            ])
-        
-        keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='back_main')])
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            shop_text,
-            reply_markup=reply_markup
-        )
-    
-    async def buy_item(self, query, item_id: str):
-        """Купити товар"""
-        if item_id not in SHOP_ITEMS:
-            await query.answer("Товар не знайдено!")
+        if not user_stats:
+            await context.bot.send_message(user_id, "Ваша статистика ще не була збережена. Спробуйте зіграти в гру!")
             return
-        
-        item = SHOP_ITEMS[item_id]
-        
-        # Тут буде інтеграція з Telegram Payments
-        # Поки що показуємо інформацію про товар
-        item_text = f"""
-{item['name']}
 
-{item['description']}
-
-💰 Ціна: {item['price'] // 100} грн
-
-🔜 Оплата буде додана незабаром!
-Ми працюємо над інтеграцією платіжної системи.
-        """
-        
-        keyboard = [
-            [InlineKeyboardButton("↩️ Назад до магазину", callback_data='shop')]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            item_text,
-            reply_markup=reply_markup
+        message = (
+            f"📊 **Ваша статистика:**\n"
+            f"🏆 Рекорд: **{user_stats['high_score']}** очок\n"
+            f"☕ Зібрано зерен: **{user_stats['total_beans']}**\n"
+            f"🕹️ Зіграно ігор: **{user_stats['games_played']}**\n"
         )
-    
-    async def show_help(self, query):
-        """Показати допомогу"""
-        help_text = """
-❓ Як грати в Perky Coffee Jump
+        await context.bot.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
 
-🎮 Керування:
-• На мобільному: торкайся екрану для стрибків
-• На комп'ютері: використовуй клавіші стрілок або WASD
-
-🎯 Мета гри:
-• Стрибай якомога вище
-• Збирай кавові зерна ☕
-• Не падай вниз!
-
-🏆 Очки:
-• Висота = очки
-• Кожне зерно додає до статистики
-• Встановлюй нові рекорди!
-
-💡 Поради:
-• Ретельно розраховуй стрибки
-• Збирай всі зерна на шляху
-• Тренуйся для покращення результатів
-
-Удачі в грі! 🚀
-        """
+    async def show_leaderboard(self, context):
+        """Показує таблицю лідерів"""
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT username, high_score FROM stats ORDER BY high_score DESC LIMIT 10")
+            leaderboard_data = cursor.fetchall()
         
-        keyboard = [
-            [InlineKeyboardButton("↩️ Назад", callback_data='back_main')]
-        ]
+        message = "🏆 **Таблиця лідерів:**\n\n"
+        for i, row in enumerate(leaderboard_data):
+            message += f"**{i+1}.** {row['username']} - **{row['high_score']}** очок\n"
         
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            help_text,
-            reply_markup=reply_markup
-        )
-    
-    async def back_to_main(self, query):
-        """Повернутися до головного меню"""
-        user = query.from_user
-        
-        welcome_message = f"""
-🤖☕ Ласкаво просимо до Perky Coffee Jump!
+        await context.bot.send_message(context.effective_user.id, message, parse_mode=ParseMode.MARKDOWN)
 
-Привіт, {user.first_name}! 👋
+    async def show_shop(self, context):
+        """Показує магазин мерчу"""
+        message = "🛒 **Магазин мерчу:**\n\n" \
+                  "Тут ви можете придбати крутий мерч з Perky Coffee Jump!\n" \
+                  "**(Функціонал у розробці)**"
+        await context.bot.send_message(context.effective_user.id, message, parse_mode=ParseMode.MARKDOWN)
 
-Це захоплююча платформер-гра, де ти граєш за кавового робота, який намагається підстрибнути якомога вище, збираючи кавові зерна!
+    async def show_help(self, context):
+        """Показує інструкції з гри"""
+        message = "❓ **Допомога:**\n\n" \
+                  "У грі Perky Coffee Jump ваша мета - керувати кавовим роботом, щоб стрибати по платформах і збирати кавові зерна. Чим більше зерен - тим вищий ваш рахунок! Уникайте падіння!\n\n" \
+                  "**Управління:**\n" \
+                  "Натискайте на екран, щоб стрибати.\n\n" \
+                  "**Підказка:** Чим довше утримуєте палець, тим вищий стрибок!"
+        await context.bot.send_message(context.effective_user.id, message, parse_mode=ParseMode.MARKDOWN)
 
-Обери дію нижче:
-        """
-        
-        keyboard = [
-            [InlineKeyboardButton("🎮 Почати гру", web_app=WebAppInfo(url=f"{WEBAPP_URL}/game"))],
-            [InlineKeyboardButton("📊 Статистика", callback_data='stats')],
-            [InlineKeyboardButton("🛒 Магазин", callback_data='shop')],
-            [InlineKeyboardButton("❓ Допомога", callback_data='help')]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            welcome_message,
-            reply_markup=reply_markup
-        )
+# Ініціалізація класу бота
+perky_bot = PerkyBot()
 
-# Ініціалізація бота
-perky_bot = PerkyCoffeeBot()
-
-# FastAPI роути
+# API endpoints
 @app.get("/game", response_class=HTMLResponse)
 async def get_game():
-    """Повертає HTML гру"""
-    # Ваш HTML код гри тут - я збережу його як є, але з мінімальними змінами
-    html_content = """
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖☕ Perky Coffee Jump</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            overflow: hidden;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-        }
-
-        .game-container {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            height: 100vh;
-            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
-            border-radius: 0;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            touch-action: none;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
-        .ui-panel {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            color: #fff;
-            font-weight: bold;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-        }
-
-        .ui-panel .item {
-            display: flex;
-            align-items: center;
-        }
-
-        .ui-panel .icon {
-            margin-right: 5px;
-            font-size: 1.5em;
-        }
-
-        .end-game-screen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            padding: 20px 40px;
-            border-radius: 15px;
-            text-align: center;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
-        
-        .end-game-screen h2 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .end-game-screen p {
-            font-size: 1.2em;
-            margin-bottom: 20px;
-        }
-
-        .end-game-screen button {
-            background: #fff;
-            color: #4b0082;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .end-game-screen button:hover {
-            background: #e0e0e0;
-        }
-        .buttons-container {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .achievement-notification {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 10px;
-            text-align: center;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-            pointer-events: none;
-            z-index: 200;
-        }
-    </style>
-</head>
-<body>
-    <div class="game-container">
-        <canvas id="gameCanvas"></canvas>
-        <div class="ui-panel">
-            <div class="item">
-                <span class="icon">📏 Висота:</span>
-                <span id="scoreDisplay">0 м</span>
-            </div>
-            <div class="item">
-                <span class="icon">☕</span>
-                <span id="beansDisplay">0</span>
-            </div>
-        </div>
-        <div class="end-game-screen" id="endGameScreen">
-            <h2 id="finalScore">Гра завершена!</h2>
-            <p id="highScore">Новий рекорд: 0 м</p>
-            <p id="totalBeans">Зібрано зерен: 0</p>
-            <div class="buttons-container">
-                <button id="restartButton">Спробувати ще раз</button>
-                <button id="mainMenuButton">Головне меню</button>
-            </div>
-        </div>
-    </div>
-    <div class="achievement-notification" id="achievementNotification"></div>
-
-    <script>
-        // Ініціалізація Telegram WebApp
-        window.Telegram.WebApp.ready();
-        window.Telegram.WebApp.expand();
-        
-        // Game variables
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const beansDisplay = document.getElementById('beansDisplay');
-        const endGameScreen = document.getElementById('endGameScreen');
-        const finalScoreDisplay = document.getElementById('finalScore');
-        const highScoreDisplay = document.getElementById('highScore');
-        const totalBeansDisplay = document.getElementById('totalBeans');
-        const restartButton = document.getElementById('restartButton');
-        const mainMenuButton = document.getElementById('mainMenuButton');
-        const achievementNotification = document.getElementById('achievementNotification');
-
-        let player;
-        let platforms;
-        let gameScore;
-        let beans;
-        let lastPlatformY;
-        let isGameOver;
-        let keys = {};
-        let touchStart = null;
-        let touchEnd = null;
-        let maxJumpHeight = 150;
-        let beanSpawnRate = 0.5;
-        let playerWidth = 40;
-        let playerHeight = 40;
-        let platformWidth = 80;
-        let platformHeight = 10;
-        let gameDifficulty = 1;
-        let vibrationEnabled = true;
-
-        let gameStats = {
-            highScore: 0,
-            totalBeans: 0
-        };
-
-        // Player class
-        class Player {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.width = playerWidth;
-                this.height = playerHeight;
-                this.dy = 0;
-                this.onGround = false;
-                this.isJumping = false;
-            }
-
-            draw() {
-                // Намалювати кавового робота
-                ctx.fillStyle = '#8B4513';
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-                
-                // Очі робота
-                ctx.fillStyle = '#FFD700';
-                ctx.fillRect(this.x + 8, this.y + 8, 8, 8);
-                ctx.fillRect(this.x + 24, this.y + 8, 8, 8);
-                
-                // Посмішка
-                ctx.fillStyle = '#FFD700';
-                ctx.fillRect(this.x + 12, this.y + 24, 16, 4);
-            }
-
-            update() {
-                this.y += this.dy;
-
-                if (!this.onGround) {
-                    this.dy += 0.5; // Gravity
-                }
-
-                if (this.y + this.height > canvas.height) {
-                    this.y = canvas.height - this.height;
-                    this.onGround = true;
-                    this.isJumping = false;
-                    this.dy = 0;
-                }
-            }
-
-            jump() {
-                if (this.onGround) {
-                    this.dy = -15;
-                    this.onGround = false;
-                    this.isJumping = true;
-                    vibrate([50]);
-                }
-            }
-        }
-
-        // Platform class
-        class Platform {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.width = platformWidth;
-                this.height = platformHeight;
-            }
-
-            draw() {
-                ctx.fillStyle = '#A0522D';
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-                
-                // Додати текстуру платформи
-                ctx.fillStyle = '#8B4513';
-                ctx.fillRect(this.x + 2, this.y + 2, this.width - 4, this.height - 4);
-            }
-        }
-
-        // Bean class
-        class Bean {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.size = 10;
-                this.collected = false;
-            }
-
-            draw() {
-                if (!this.collected) {
-                    // Кавове зерно
-                    ctx.fillStyle = '#4B0082';
-                    ctx.beginPath();
-                    ctx.ellipse(this.x, this.y, this.size, this.size * 0.8, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Блик на зерні
-                    ctx.fillStyle = '#8A2BE2';
-                    ctx.beginPath();
-                    ctx.ellipse(this.x - 3, this.y - 3, this.size * 0.3, this.size * 0.2, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-        }
-
-        // Initialize game
-        function init() {
-            resizeCanvas();
-            player = new Player(canvas.width / 2 - playerWidth / 2, canvas.height - playerHeight);
-            platforms = [];
-            beans = [];
-            gameScore = 0;
-            lastPlatformY = canvas.height - 100;
-            isGameOver = false;
-
-            // Generate initial platforms
-            for (let i = 0; i < 10; i++) {
-                let x = Math.random() * (canvas.width - platformWidth);
-                let y = lastPlatformY - i * 80;
-                platforms.push(new Platform(x, y));
-                
-                // Spawn beans
-                if (Math.random() < beanSpawnRate) {
-                    beans.push(new Bean(x + platformWidth / 2, y - 20));
-                }
-            }
-            
-            loadStats();
-        }
-
-        function resizeCanvas() {
-            const container = document.querySelector('.game-container');
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-        }
-
-        // Handle game over
-        function gameOver() {
-            isGameOver = true;
-            endGameScreen.style.display = 'flex';
-            
-            const finalScore = Math.floor(gameScore / 10);
-            finalScoreDisplay.textContent = `Ти пролетів: ${finalScore} м`;
-            totalBeansDisplay.textContent = `Зібрано зерен: ${gameStats.totalBeans}`;
-            
-            if (finalScore > gameStats.highScore) {
-                gameStats.highScore = finalScore;
-                highScoreDisplay.textContent = `Новий рекорд: ${gameStats.highScore} м`;
-                highScoreDisplay.style.color = 'gold';
-                showAchievementNotification('🏅 Новий рекорд!');
-                vibrate([200, 100, 200]);
-            } else {
-                highScoreDisplay.textContent = `Рекорд: ${gameStats.highScore} м`;
-                highScoreDisplay.style.color = '#fff';
-            }
-
-            // Зберегти статистику на сервері
-            saveGameStats(finalScore, gameStats.totalBeans);
-            saveStats();
-        }
-
-        // Game loop
-        function update() {
-            if (isGameOver) return;
-
-            player.update();
-
-            // Check for collision with platforms
-            platforms.forEach(platform => {
-                if (player.dy > 0 && 
-                    player.x + player.width > platform.x &&
-                    player.x < platform.x + platform.width &&
-                    player.y + player.height > platform.y &&
-                    player.y + player.height < platform.y + platform.height + 10) {
-                    
-                    player.y = platform.y - player.height;
-                    player.onGround = true;
-                    player.isJumping = false;
-                    player.dy = 0;
-                }
-            });
-
-            // Handle player input
-            if (keys['ArrowUp'] || keys['w'] || keys[' '] || (touchEnd && touchEnd.y < touchStart.y - 20)) {
-                player.jump();
-                touchStart = null;
-                touchEnd = null;
-            } else if (keys['ArrowLeft'] || keys['a']) {
-                player.x -= 5;
-            } else if (keys['ArrowRight'] || keys['d']) {
-                player.x += 5;
-            }
-
-            // Keep player within canvas bounds
-            if (player.x < 0) player.x = 0;
-            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
-
-            // Update platforms and generate new ones
-            if (player.dy < 0) {
-                platforms.forEach(platform => {
-                    platform.y -= player.dy;
-                });
-                beans.forEach(bean => {
-                    bean.y -= player.dy;
-                });
-                gameScore += Math.abs(player.dy);
-            }
-            
-            platforms = platforms.filter(platform => platform.y < canvas.height);
-            beans = beans.filter(bean => bean.y < canvas.height);
-            
-            while (platforms.length < 10) {
-                let x = Math.random() * (canvas.width - platformWidth);
-                let y = platforms[platforms.length - 1].y - 80;
-                platforms.push(new Platform(x, y));
-                
-                // Spawn beans
-                if (Math.random() < beanSpawnRate) {
-                    beans.push(new Bean(x + platformWidth / 2, y - 20));
-                }
-            }
-
-            // Check for bean collection
-            beans.forEach((bean, index) => {
-                if (!bean.collected &&
-                    player.x < bean.x + bean.size &&
-                    player.x + player.width > bean.x - bean.size &&
-                    player.y < bean.y + bean.size &&
-                    player.y + player.height > bean.y - bean.size) {
-                    
-                    bean.collected = true;
-                    gameStats.totalBeans++;
-                    beans.splice(index, 1);
-                    vibrate([30]);
-                    
-                    // Achievement notifications
-                    if (gameStats.totalBeans % 10 === 0) {
-                        showAchievementNotification(`☕ ${gameStats.totalBeans} зерен зібрано!`);
-                    }
-                }
-            });
-
-            // Update UI
-            scoreDisplay.textContent = Math.floor(gameScore / 10) + ' м';
-            beansDisplay.textContent = gameStats.totalBeans;
-
-            // Check if player falls off the bottom
-            if (player.y > canvas.height) {
-                gameOver();
-            }
-        }
-
-        // Draw everything
-        function draw() {
-            // Clear canvas with gradient background
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#87CEEB');
-            gradient.addColorStop(1, '#98FB98');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw clouds
-            drawClouds();
-            
-            platforms.forEach(platform => platform.draw());
-            beans.forEach(bean => bean.draw());
-            player.draw();
-        }
-
-        function drawClouds() {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            
-            // Static clouds for background
-            const cloudY = (gameScore / 20) % canvas.height;
-            
-            // Cloud 1
-            ctx.beginPath();
-            ctx.arc(50, cloudY, 20, 0, Math.PI * 2);
-            ctx.arc(70, cloudY, 25, 0, Math.PI * 2);
-            ctx.arc(90, cloudY, 20, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Cloud 2
-            ctx.beginPath();
-            ctx.arc(canvas.width - 80, cloudY + 100, 18, 0, Math.PI * 2);
-            ctx.arc(canvas.width - 65, cloudY + 100, 22, 0, Math.PI * 2);
-            ctx.arc(canvas.width - 50, cloudY + 100, 18, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Event listeners
-        window.addEventListener('keydown', (e) => {
-            keys[e.key] = true;
-            e.preventDefault();
-        });
-
-        window.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
-        });
-
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            touchStart = { 
-                x: touch.clientX - rect.left, 
-                y: touch.clientY - rect.top 
-            };
-        });
-
-        canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            const touch = e.changedTouches[0];
-            const rect = canvas.getBoundingClientRect();
-            touchEnd = { 
-                x: touch.clientX - rect.left, 
-                y: touch.clientY - rect.top 
-            };
-        });
-
-        canvas.addEventListener('click', (e) => {
-            e.preventDefault();
-            player.jump();
-        });
-
-        // Buttons
-        restartButton.addEventListener('click', () => {
-            endGameScreen.style.display = 'none';
-            init();
-        });
-
-        mainMenuButton.addEventListener('click', () => {
-            window.Telegram.WebApp.close();
-        });
-
-        // Utility functions
-        function saveStats() {
-            localStorage.setItem('perkyCoffeeStats', JSON.stringify(gameStats));
-        }
-
-        function loadStats() {
-            const savedStats = localStorage.getItem('perkyCoffeeStats');
-            if (savedStats) {
-                const parsed = JSON.parse(savedStats);
-                gameStats.highScore = parsed.highScore || 0;
-                // Don't load totalBeans from localStorage as it's managed by server
-            }
-        }
-
-        function showAchievementNotification(message) {
-            achievementNotification.textContent = message;
-            achievementNotification.style.opacity = 1;
-            setTimeout(() => {
-                achievementNotification.style.opacity = 0;
-            }, 3000);
-        }
-
-        function vibrate(pattern) {
-            if (vibrationEnabled && navigator.vibrate) {
-                navigator.vibrate(pattern);
-            }
-        }
-
-        /**
-         * Збереження статистики гри на сервері
-         */
-        function saveGameStats(score, collected_beans) {
-            if (!window.Telegram.WebApp.initDataUnsafe || !window.Telegram.WebApp.initDataUnsafe.user) {
-                console.error('Telegram WebApp user data not available');
-                return;
-            }
-            
-            const user_id = window.Telegram.WebApp.initDataUnsafe.user.id;
-            
-            fetch('/save_stats', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    user_id: user_id,
-                    score: Math.floor(score),
-                    collected_beans: collected_beans
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Stats saved successfully:', data);
-            })
-            .catch(error => {
-                console.error('Error saving stats:', error);
-            });
-        }
-
-        // Resize handler
-        window.addEventListener('resize', () => {
-            resizeCanvas();
-        });
-
-        // Initialize and start game
-        init();
-        gameLoop();
-    </script>
-</body>
-</html>
-    """
-    
-    return HTMLResponse(content=html_content)
+    """Подає HTML-файл гри"""
+    try:
+        with open("game.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Game file not found")
 
 @app.post("/save_stats")
-async def save_game_stats(stats: GameStats):
-    """API endpoint для збереження статистики гри"""
+async def save_stats_endpoint(stats: GameStats):
+    """Збереження статистики гри"""
     try:
-        db.save_game_result(stats.user_id, stats.score, stats.collected_beans)
-        return {"success": True, "message": "Stats saved successfully"}
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT high_score, total_beans, games_played FROM stats WHERE user_id = ?", (stats.user_id,))
+            current_stats = cursor.fetchone()
+            
+            if current_stats:
+                new_high_score = max(current_stats['high_score'], stats.score)
+                new_total_beans = current_stats['total_beans'] + stats.collected_beans
+                new_games_played = current_stats['games_played'] + 1
+                
+                cursor.execute("""
+                    UPDATE stats
+                    SET high_score = ?, total_beans = ?, games_played = ?
+                    WHERE user_id = ?
+                """, (new_high_score, new_total_beans, new_games_played, stats.user_id))
+            else:
+                cursor.execute("""
+                    INSERT INTO stats (user_id, high_score, total_beans, games_played, achievements)
+                    VALUES (?, ?, ?, ?, '{}')
+                """, (stats.user_id, stats.score, stats.collected_beans, 1))
+
+            conn.commit()
+            logger.info(f"Stats saved for user {stats.user_id}: score={stats.score}, beans={stats.collected_beans}")
+            return {"message": "Stats saved successfully"}
     except Exception as e:
-        logger.error(f"Error saving game stats: {e}")
+        logger.error(f"Error saving stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to save stats")
 
 @app.get("/stats/{user_id}")
 async def get_user_stats(user_id: int):
-    """API endpoint для отримання статистики користувача"""
+    """Отримання статистики користувача"""
     try:
-        stats = db.get_user_stats(user_id)
-        if stats:
-            return stats
-        else:
-            return {"error": "User not found"}
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT high_score, total_beans, games_played FROM stats WHERE user_id = ?", (user_id,))
+            user_stats = cursor.fetchone()
+            if user_stats:
+                return dict(user_stats)
+            else:
+                raise HTTPException(status_code=404, detail="User stats not found")
     except Exception as e:
         logger.error(f"Error getting user stats: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get stats")
+        raise HTTPException(status_code=500, detail="Failed to get user stats")
 
 @app.get("/leaderboard")
-async def get_leaderboard():
-    """API endpoint для отримання таблиці лідерів"""
+async def get_leaderboard_endpoint():
+    """Отримання таблиці лідерів"""
     try:
-        leaderboard = db.get_leaderboard()
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT username, high_score FROM stats ORDER BY high_score DESC LIMIT 10")
+            leaderboard = [dict(row) for row in cursor.fetchall()]
         return {"leaderboard": leaderboard}
     except Exception as e:
         logger.error(f"Error getting leaderboard: {e}")
         raise HTTPException(status_code=500, detail="Failed to get leaderboard")
 
+# Змінений вебхук-ендпоінт для коректної роботи з Application
 @app.post(f"/{BOT_TOKEN}")
 async def telegram_webhook(request: Request):
     """Webhook для Telegram бота"""
     try:
+        # Важливо: перевірка, чи Application вже ініціалізовано
+        if not perky_bot.application:
+            logger.warning("Webhook received, but bot not initialized yet. Returning 503.")
+            return {"status": "bot not initialized yet"}, 503
+        
         json_data = await request.json()
         update = Update.de_json(json_data, perky_bot.application.bot)
-        await perky_bot.application.process_update(update)
+        
+        # Обробка оновлення через Application
+        async with perky_bot.application:
+            await perky_bot.application.process_update(update)
+
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Error processing webhook: {e}")
@@ -1122,24 +263,53 @@ async def telegram_webhook(request: Request):
 
 async def setup_bot():
     """Налаштування Telegram бота"""
-    perky_bot.application = Application.builder().token(BOT_TOKEN).build()
-    
-    # Додати обробники
-    perky_bot.application.add_handler(CommandHandler("start", perky_bot.start))
-    perky_bot.application.add_handler(CallbackQueryHandler(perky_bot.button_callback))
-    
-    # Налаштувати webhook
-    webhook_url = f"{WEBAPP_URL}/{BOT_TOKEN}"
-    await perky_bot.application.bot.set_webhook(webhook_url)
-    
-    logger.info(f"Webhook set to: {webhook_url}")
+    try:
+        perky_bot.application = Application.builder().token(BOT_TOKEN).build()
+        
+        # Додати обробники
+        perky_bot.application.add_handler(CommandHandler("start", perky_bot.start))
+        perky_bot.application.add_handler(CallbackQueryHandler(perky_bot.button_callback))
+        perky_bot.application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, perky_bot.web_app_data))
+        
+        # Налаштувати webhook
+        webhook_url = f"{WEBAPP_URL}/{BOT_TOKEN}"
+        await perky_bot.application.bot.set_webhook(webhook_url)
+        
+        logger.info(f"Webhook set to: {webhook_url}")
+    except Exception as e:
+        logger.error(f"Error during bot setup: {e}")
+        raise
 
+# Додаємо обробку даних з WebApp
+async def web_app_data(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обробка даних, надісланих з WebApp"""
+    data = json.loads(update.effective_message.web_app_data.data)
+    user_id = update.effective_user.id
+    score = data.get('score', 0)
+    
+    # Збереження даних у базу
+    # У цьому прикладі я використаю твій ендпоінт,
+    # але можна було б зберегти напряму в БД
+    stats = GameStats(user_id=user_id, score=score, collected_beans=0)
+    await save_stats_endpoint(stats)
+    
+    message = f"🎉 Гра завершена! Ваш рахунок: **{score}** очок."
+    await context.bot.send_message(user_id, message, parse_mode=ParseMode.MARKDOWN)
+    logger.info(f"Received game data from user {user_id}: score={score}")
+
+# Додаємо цей метод до класу PerkyBot
+PerkyBot.web_app_data = web_app_data
+
+# Запуск бота і вебхука під час старту FastAPI
 @app.on_event("startup")
 async def startup_event():
-    """Подія запуску сервера"""
+    """Виконується при запуску FastAPI"""
+    logger.info("Initializing database...")
+    init_db()
     logger.info("Starting Perky Coffee Jump Bot...")
     await setup_bot()
     logger.info("Bot setup completed!")
-
+    
+# Запуск FastAPI сервера (для локального тестування)
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=PORT)
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
