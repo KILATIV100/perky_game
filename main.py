@@ -265,10 +265,11 @@ async def setup_bot():
         perky_bot.application.add_handler(CommandHandler("start", perky_bot.start))
         perky_bot.application.add_handler(CallbackQueryHandler(perky_bot.button_callback))
         perky_bot.application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler))
-        
+
         # Налаштувати webhook
-        webhook_url = f"{WEBAPP_URL}/{BOT_TOKEN}"
-        await perky_bot.application.bot.set_webhook(webhook_url)
+# Змінити з webhook_url = f"{WEBAPP_URL}/{BOT_TOKEN}"
+webhook_url = f"https://perky.up.railway.app/{BOT_TOKEN}"
+await perky_bot.application.bot.set_webhook(webhook_url)
         
         logger.info(f"Webhook set to: {webhook_url}")
     except Exception as e:
