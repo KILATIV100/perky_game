@@ -1,151 +1,144 @@
-# database.py: Управління базою даних SQLite.
-# Відповідає за створення таблиць, збереження та отримання даних гравців.
-
 import sqlite3
+import os
 import logging
-from typing import Dict, List, Tuple
 
-# Налаштування логування
+# Налаштування логера
 logger = logging.getLogger(__name__)
 
 class Database:
     def __init__(self, db_path: str = "/data/perky_jump.db"):
         """
-        Ініціалізація бази даних.
-        ВИПРАВЛЕННЯ: Шлях змінено на /data/ для постійного зберігання на Railway.
+        Використовуємо шлях /data/, який буде підключено як постійне сховище на Railway.
         """
         self.db_path = db_path
+        # Перевіряємо та створюємо директорію, якщо її немає
+        db_dir = os.path.dirname(self.db_path)
+        try:
+            if not os.path.exists(db_dir):
+                os.makedirs(db_dir)
+                logger.info(f"Створено директорію для бази даних: {db_dir}")
+        except OSError as e:
+            logger.error(f"Не вдалося створити директорію для БД: {e}")
+
         self.init_database()
-    
-    def get_connection(self):
-        """Створює з'єднання з базою даних."""
-        return sqlite3.connect(self.db_path)
 
     def init_database(self):
-        """Ініціалізація таблиць у базі даних, якщо вони не існують."""
+        """Ініціалізація або підключення до бази даних."""
         try:
-            with self.get_connection() as conn:
+            with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                
-                # Таблиця користувачів для зберігання основної статистики
+                # Таблиця користувачів
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS users (
                         user_id INTEGER PRIMARY KEY,
                         username TEXT,
                         first_name TEXT,
-                        max_height INTEGER DEFAULT 0,
+                        high_score INTEGER DEFAULT 0,
                         total_beans INTEGER DEFAULT 0,
                         games_played INTEGER DEFAULT 0,
-                        last_played TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        best_coffee_per_game INTEGER DEFAULT 0,
+                        purchased_skins TEXT DEFAULT '["default"]',
+                        current_skin TEXT DEFAULT 'default',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        last_played TIMESTAMP
                     )
                 ''')
-                
-                # Таблиця для зберігання кожної окремої гри
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS games (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER,
-                        score INTEGER,
-                        beans_collected INTEGER,
-                        played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users (user_id)
-                    )
-                ''')
-                
                 conn.commit()
-                logger.info("База даних успішно ініціалізована.")
-        except Exception as e:
+                logger.info(f"База даних успішно ініціалізована за шляхом: {self.db_path}")
+        except sqlite3.Error as e:
             logger.error(f"Помилка при ініціалізації бази даних: {e}")
 
-    def get_user_stats(self, user_id: int) -> Dict:
-        """Отримати повну статистику користувача за його ID."""
+    def get_user_stats(self, user_id: int) -> dict:
+        """Отримати статистику користувача."""
         try:
-            with self.get_connection() as conn:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT user_id, username, first_name, max_height, total_beans, games_played, last_played
-                    FROM users WHERE user_id = ?
-                ''', (user_id,))
-                
-                result = cursor.fetchone()
-                if result:
-                    return {
-                        'user_id': result[0],
-                        'username': result[1],
-                        'first_name': result[2],
-                        'max_height': result[3],
-                        'total_beans': result[4],
-                        'games_played': result[5],
-                        'last_played': result[6]
-                    }
-        except Exception as e:
-            logger.error(f"Помилка при отриманні статистики для user_id {user_id}: {e}")
-        return None
+                cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+                user = cursor.fetchone()
+                return dict(user) if user else None
+        except sqlite3.Error as e:
+            logger.error(f"Помилка отримання статистики для user_id {user_id}: {e}")
+            return None
 
-    def save_user_info(self, user_id: int, username: str, first_name: str):
-        """Зберігає або оновлює інформацію про користувача (id, username, first_name)."""
+    def save_user(self, user_id: int, username: str, first_name: str):
+        """Зберегти або оновити інформацію про користувача."""
         try:
-            with self.get_connection() as conn:
+            with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO users (user_id, username, first_name)
                     VALUES (?, ?, ?)
                     ON CONFLICT(user_id) DO UPDATE SET
                         username = excluded.username,
-                        first_name = excluded.first_name;
+                        first_name = excluded.first_name
                 ''', (user_id, username, first_name))
                 conn.commit()
-        except Exception as e:
-            logger.error(f"Помилка при збереженні користувача {user_id}: {e}")
-
-    def save_game_result(self, user_id: int, score: int, beans_collected: int):
-        """Зберігає результат однієї гри та оновлює загальну статистику користувача."""
+        except sqlite3.Error as e:
+            logger.error(f"Помилка збереження користувача {user_id}: {e}")
+            
+    def save_game_result(self, user_id: int, username: str, score: int, collected_beans: int):
+        """Зберегти результат гри та оновити статистику."""
         try:
-            with self.get_connection() as conn:
+            with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Вставляємо запис про нову гру
+                # Оновлюємо або вставляємо користувача
+                self.save_user(user_id, username, username)
+
+                # Отримуємо поточні рекорди
+                cursor.execute("SELECT high_score, best_coffee_per_game FROM users WHERE user_id = ?", (user_id,))
+                current_records = cursor.fetchone()
+                current_high_score = current_records[0] if current_records else 0
+                current_best_coffee = current_records[1] if current_records else 0
+
+                new_high_score = max(current_high_score, score)
+                new_best_coffee = max(current_best_coffee, collected_beans)
+
+                # Оновлюємо статистику
                 cursor.execute('''
-                    INSERT INTO games (user_id, score, beans_collected)
-                    VALUES (?, ?, ?)
-                ''', (user_id, score, beans_collected))
-                
-                # Оновлюємо сумарну статистику користувача
-                cursor.execute('''
-                    UPDATE users SET 
-                        max_height = MAX(max_height, ?),
+                    UPDATE users SET
+                        high_score = ?,
                         total_beans = total_beans + ?,
                         games_played = games_played + 1,
+                        best_coffee_per_game = ?,
                         last_played = CURRENT_TIMESTAMP
                     WHERE user_id = ?
-                ''', (score, beans_collected, user_id))
-                
+                ''', (new_high_score, collected_beans, new_best_coffee, user_id))
                 conn.commit()
-                logger.info(f"Результати гри для user_id {user_id} збережено: висота={score}, зерна={beans_collected}")
-        except Exception as e:
-            logger.error(f"Помилка при збереженні результатів гри для user_id {user_id}: {e}")
+        except sqlite3.Error as e:
+            logger.error(f"Помилка збереження результатів гри для {user_id}: {e}")
 
-    def get_leaderboard(self, limit: int = 10) -> List[Tuple]:
-        """Отримує глобальну таблицю лідерів на основі максимальної висоти."""
+    def get_leaderboard(self, limit: int = 10) -> list:
+        """Отримати таблицю лідерів."""
         try:
-            with self.get_connection() as conn:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
-                # ВИПРАВЛЕННЯ: Використовуємо COALESCE для відображення імені або юзернейму
                 cursor.execute('''
-                    SELECT 
-                        COALESCE(first_name, username, 'Гравець ' || user_id) as display_name,
-                        max_height,
-                        total_beans
-                    FROM users 
-                    WHERE games_played > 0
-                    ORDER BY max_height DESC
-                    LIMIT ?
+                    SELECT username, high_score FROM users
+                    WHERE games_played > 0 ORDER BY high_score DESC LIMIT ?
                 ''', (limit,))
-                return cursor.fetchall()
-        except Exception as e:
-            logger.error(f"Помилка при отриманні таблиці лідерів: {e}")
-        return []
+                return [dict(row) for row in cursor.fetchall()]
+        except sqlite3.Error as e:
+            logger.error(f"Помилка отримання таблиці лідерів: {e}")
+            return []
+            
+    def save_skin_settings(self, user_id: int, purchased_skins: str, current_skin: str):
+        """Зберегти налаштування скінів."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE users SET
+                        purchased_skins = ?,
+                        current_skin = ?
+                    WHERE user_id = ?
+                ''', (purchased_skins, current_skin, user_id))
+                conn.commit()
+        except sqlite3.Error as e:
+            logger.error(f"Помилка збереження скінів для {user_id}: {e}")
 
-# Створення єдиного екземпляру класу для всього додатку
+# Створюємо єдиний екземпляр класу для всього додатку
 db = Database()
 
