@@ -1,0 +1,19 @@
+Бази даних
+*.db
+*.sqlite3
+
+Віртуальне оточення Python
+/venv/
+/.venv/
+env/
+.env
+
+Кеш Python
+pycache/
+*.py[cod]
+*$py.class
+
+Файли IDE
+.vscode/
+.idea/
+
