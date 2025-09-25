@@ -1,613 +1,893 @@
-// Initialize Telegram WebApp
-if (window.Telegram && window.Telegram.WebApp) {
-    window.Telegram.WebApp.ready();
-    window.Telegram.WebApp.expand();
-}
+// IIFE для інкапсуляції коду гри
+(function() {
+    'use strict';
 
-// Game variables
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+    // Ініціалізація Telegram WebApp
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
 
-let gameState = 'menu'; // menu, playing, gameOver
-let gameMode = 'classic';
-let animationId;
+    // Отримання елементів DOM
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-// Game objects
-let player = {};
-let platforms = [];
-let coffees = [];
-let particles = [];
-let obstacles = [];
-let camera = { y: 0, targetY: 0 };
-
-// Game stats
-let score = 0;
-let height = 0;
-let coffeeCount = 0;
-let timeLeft = 60;
-let gameTimer;
-let bonusTimer;
-let bonusTimeLeft = 0;
-
-// Records system
-let gameStats = {
-    bestHeight: 0,
-    bestCoffee: 0,
-    gamesPlayed: 0,
-    totalCoffee: 0,
-    coins: 0,
-    experience: 0,
-    level: 1
-};
-
-// Bonus system
-let bonusesShown = {
-    discount2: false,
-    discount5: false,
-    brandedCup: false
-};
-
-// Input handling
-let keys = {};
-let touchControls = { left: false, right: false };
-let gyroEnabled = false;
-let gyroTilt = 0;
-
-// Settings
-let gameSettings = {
-    gyro: true,
-    sound: true,
-    vibration: true,
-    autoSeason: true,
-    showFPS: false
-};
-
-
-// --- INITIALIZATION & SETUP ---
-
-// Resize canvas to fit container
-function resizeCanvas() {
-    const container = canvas.parentElement;
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
-}
-
-// Game modes configuration
-const gameModes = {
-    classic: { name: 'Класичний', background: 'linear-gradient(180deg, #87CEEB 0%, #98FB98 100%)', platformColor: '#8B4513', timed: false, obstacles: false },
-    timed: { name: 'На час', background: 'linear-gradient(180deg, #FF6B6B 0%, #FFE66D 100%)', platformColor: '#D2691E', timed: true, obstacles: false },
-    night: { name: 'Нічний', background: 'linear-gradient(180deg, #2C3E50 0%, #34495E 100%)', platformColor: '#7F8C8D', timed: false, obstacles: false },
-    extreme: { name: 'Екстремальний', background: 'linear-gradient(180deg, #8E2DE2 0%, #4A00E0 100%)', platformColor: '#E74C3C', timed: false, obstacles: true }
-};
-
-// Initialize player state
-function initPlayer() {
-    player = {
-        x: canvas.width / 2,
-        y: canvas.height - 100,
-        width: 30,
-        height: 30,
-        vx: 0,
-        vy: 0,
-        onGround: false,
-        jumpPower: -15,
-        speed: 5,
-        color: '#FF6B6B'
+    // UI елементи
+    const ui = {
+        screens: {
+            menu: document.getElementById('menuScreen'),
+            gameOver: document.getElementById('gameOverScreen'),
+            shop: document.getElementById('shopScreen'),
+            customize: document.getElementById('customizeScreen'),
+        },
+        buttons: {
+            // Керування
+            left: document.getElementById('leftBtn'),
+            right: document.getElementById('rightBtn'),
+            // Перезапуск та меню
+            restart: document.getElementById('restartBtn'),
+            toMenu: document.getElementById('menuBtn'),
+            // Навігація в меню
+            shop: document.getElementById('shopBtn'),
+            shopBack: document.getElementById('shopBackBtn'),
+            customize: document.getElementById('customizeBtn'),
+            customizeBack: document.getElementById('customizeBackBtn'),
+        },
+        displays: {
+            // Ігрові
+            heightScore: document.getElementById('heightScore'),
+            coffeeCount: document.getElementById('coffeeCount'),
+            timeDisplay: document.getElementById('timeDisplay'),
+            timeLeft: document.getElementById('timeLeft'),
+            // Рекорди
+            bestHeight: document.getElementById('bestHeight'),
+            bestCoffee: document.getElementById('bestCoffee'),
+            // Екран завершення гри
+            finalHeight: document.getElementById('finalHeight'),
+            finalCoffee: document.getElementById('finalCoffee'),
+            finalTime: document.getElementById('finalTime'),
+            timeSpent: document.getElementById('timeSpent'),
+            // Магазин
+            shopCoins: document.getElementById('shopCoins'),
+            shopGrid: document.getElementById('shopGrid'),
+             // Кастомізація
+            customizeCoins: document.getElementById('customizeCoins'),
+            skinsGrid: document.getElementById('skinsGrid'),
+        },
+        containers: {
+            stats: document.getElementById('statsGrid'),
+            leaderboard: document.getElementById('leaderboardContent'),
+        },
+        popups: {
+            bonus: document.getElementById('bonusPopup'),
+            bonusTitle: document.getElementById('bonusTitle'),
+            bonusContent: document.getElementById('bonusContent'),
+            bonusInstruction: document.getElementById('bonusInstruction'),
+            bonusTimer: document.getElementById('bonusTimer'),
+            closeBonus: document.getElementById('closeBonusBtn'),
+        },
+        toggles: {
+            gyro: document.getElementById('gyroToggle'),
+            vibration: document.getElementById('vibrationToggle'),
+        },
+        tabs: document.querySelectorAll('.menu-tab'),
+        tabSections: document.querySelectorAll('.menu-section'),
     };
-}
 
-// Generate platforms
-function initPlatforms() {
-    platforms = [];
-    obstacles = [];
-    const platformWidth = 80;
-    const platformHeight = 15;
+    // Стан гри
+    let gameState = 'menu'; // menu, playing, gameOver
+    let gameMode = 'classic';
+    let animationId;
+    let lastTime = 0;
+    let difficultyTimer = 0;
 
-    // Starting platform
-    platforms.push({ x: canvas.width / 2 - platformWidth / 2, y: canvas.height - 50, width: platformWidth, height: platformHeight, type: 'normal', broken: false });
+    // Ігрові об'єкти
+    let player, platforms, coffees, particles, clouds;
+    let cameraY = 0;
+    
+    // Ігрова статистика
+    let height = 0;
+    let coffeeCount = 0;
+    let timeLeft = 60;
+    let gameTimer;
+    let bonusTimer;
 
-    for (let i = 1; i < 50; i++) {
-        let platformType = 'normal';
-        const rand = Math.random();
+    // Глобальна статистика гравця
+    let userStats = {
+        id: tg.initDataUnsafe?.user?.id || null,
+        username: tg.initDataUnsafe?.user?.username || 'Player',
+        highScore: 0,
+        totalBeans: 0,
+        gamesPlayed: 0,
+        purchasedSkins: ['default'],
+    };
+
+    // Налаштування гри
+    const config = {
+        player: {
+            width: 35,
+            height: 35,
+            jumpPower: -16,
+            speed: 6,
+            gravity: 0.7,
+        },
+        platform: {
+            width: 85,
+            height: 15,
+            minGapY: 80,
+            maxGapY: 130,
+            maxGapX: 200,
+        },
+        difficulty: {
+            increaseInterval: 5000, // ms
+            speedIncrement: 0.1,
+            maxSpeed: 10,
+        },
+        gyro: {
+            enabled: false,
+            sensitivity: 20, // Збільшена чутливість (менший кут для макс. швидкості)
+            tilt: 0,
+        },
+        vibration: {
+            enabled: true,
+        },
+    };
+    
+    // Товари в магазині (тимчасово, поки немає API)
+    const shopItems = {
+        'double_jump': { name: 'Подвійний стрибок', price: 500, description: 'Дозволяє стрибнути раз у повітрі.' },
+        'magnet': { name: 'Магніт для зерен', price: 750, description: 'Автоматично притягує зерна.' },
+    };
+
+    // Скіни для кастомізації
+    const skins = {
+        'default': { name: 'Класичний', emoji: '🤖', price: 0 },
+        'ninja': { name: 'Ніндзя', emoji: '🥷', price: 250 },
+        'wizard': { name: 'Чарівник', emoji: '🧙‍♂️', price: 300 },
+        'alien': { name: 'Прибулець', emoji: '👽', price: 350 },
+        'superhero': { name: 'Супергерой', emoji: '🦸‍♂️', price: 500 },
+    };
+    
+    // Сезонні теми
+    const themes = {
+        spring: { bg: 'linear-gradient(180deg, #87CEEB 0%, #98FB98 100%)', platform: '#8B4513' },
+        summer: { bg: 'linear-gradient(180deg, #42C2FF 0%, #FFD700 100%)', platform: '#D2691E' },
+        autumn: { bg: 'linear-gradient(180deg, #F39C12 0%, #E74C3C 100%)', platform: '#A0522D' },
+        winter: { bg: 'linear-gradient(180deg, #FFFFFF 0%, #B0E0E6 100%)', platform: '#A9A9A9' },
+        halloween: { bg: 'linear-gradient(180deg, #1A1A1A 0%, #4A00E0 100%)', platform: '#FF7F50' },
+        valentines: { bg: 'linear-gradient(180deg, #FFC0CB 0%, #FF69B4 100%)', platform: '#DB7093' },
+    };
+    let currentTheme = themes.spring;
+
+
+    /**
+     * ========================================
+     * ОСНОВНІ ФУНКЦІЇ ГРИ
+     * ========================================
+     */
+
+    // Головний ігровий цикл
+    function gameLoop(time) {
+        if (gameState !== 'playing') return;
+
+        const deltaTime = time - lastTime;
+        lastTime = time;
+
+        update(deltaTime);
+        render();
+
+        animationId = requestAnimationFrame(gameLoop);
+    }
+
+    // Ініціалізація та запуск гри
+    function startGame(mode) {
+        gameMode = mode;
+        gameState = 'playing';
+
+        // Скидання стану гри
+        height = 0;
+        coffeeCount = 0;
+        cameraY = 0;
+        difficultyTimer = 0;
+        config.player.speed = 6;
+
+        player = {
+            x: canvas.width / 2 - config.player.width / 2,
+            y: canvas.height - 100,
+            width: config.player.width,
+            height: config.player.height,
+            vx: 0,
+            vy: 0,
+            onPlatform: null,
+            skin: skins[userStats.currentSkin || 'default'].emoji,
+        };
+
+        platforms = [];
+        coffees = [];
+        particles = [];
         
-        // Platform type distribution (bonus removed, probabilities reduced)
-        if (rand < 0.08) platformType = 'bouncy';      // 8% bouncy
-        else if (rand < 0.14) platformType = 'fragile'; // 6% fragile
+        // Створення початкових платформ
+        let startPlatform = createPlatform(canvas.width / 2 - config.platform.width / 2, canvas.height - 50, 'normal');
+        platforms.push(startPlatform);
+        player.onPlatform = startPlatform;
 
-        platforms.push({
-            x: Math.random() * (canvas.width - platformWidth),
-            y: canvas.height - 50 - (i * 120),
-            width: platformWidth,
-            height: platformHeight,
-            type: platformType,
-            broken: false,
-            bounceAnimation: 0
-        });
-    }
-}
-
-// Generate coffee beans
-function initCoffees() {
-    coffees = [];
-    platforms.forEach((platform, index) => {
-        if (index > 0 && Math.random() < 0.7) {
-            coffees.push({ x: platform.x + platform.width / 2 - 10, y: platform.y - 25, width: 20, height: 20, collected: false, bounce: 0 });
+        for (let i = 0; i < 15; i++) {
+            generateNextPlatform();
         }
-    });
-}
 
+        ui.screens.menu.style.display = 'none';
+        ui.screens.gameOver.style.display = 'none';
 
-// --- DATA & STATE MANAGEMENT ---
+        if (gameMode === 'timed') {
+            timeLeft = 60;
+            ui.displays.timeDisplay.style.display = 'block';
+            startTimer();
+        } else {
+            ui.displays.timeDisplay.style.display = 'none';
+        }
 
-function loadStats() {
-    const saved = localStorage.getItem('perkyCoffeeStats');
-    if (saved) {
-        gameStats = { ...gameStats, ...JSON.parse(saved) };
+        lastTime = performance.now();
+        animationId = requestAnimationFrame(gameLoop);
     }
-    updateStatsDisplay();
-}
 
-function saveStats() {
-    localStorage.setItem('perkyCoffeeStats', JSON.stringify(gameStats));
-}
+    // Завершення гри
+    function endGame() {
+        if (gameState === 'gameOver') return;
+        gameState = 'gameOver';
 
-function updateStatsDisplay() {
-    document.getElementById('statsBestHeight').textContent = gameStats.bestHeight;
-    document.getElementById('statsBestCoffee').textContent = gameStats.bestCoffee;
-    document.getElementById('statsGamesPlayed').textContent = gameStats.gamesPlayed;
-    document.getElementById('statsTotalCoffee').textContent = gameStats.totalCoffee;
-    document.getElementById('statsCoins').textContent = gameStats.coins;
-    document.getElementById('statsLevel').textContent = gameStats.level;
-    document.getElementById('bestHeight').textContent = gameStats.bestHeight;
-    document.getElementById('bestCoffee').textContent = gameStats.bestCoffee;
-}
+        cancelAnimationFrame(animationId);
+        if (gameTimer) clearInterval(gameTimer);
 
-function loadSettings() {
-    const saved = localStorage.getItem('perkyCoffeeSettings');
-    if (saved) {
-        gameSettings = { ...gameSettings, ...JSON.parse(saved) };
+        userStats.gamesPlayed++;
+        userStats.totalBeans += coffeeCount;
+        userStats.highScore = Math.max(userStats.highScore, height);
+        
+        saveStatsOnServer();
+
+        ui.displays.finalHeight.textContent = height;
+        ui.displays.finalCoffee.textContent = coffeeCount;
+
+        if (gameMode === 'timed') {
+            ui.displays.finalTime.style.display = 'block';
+            ui.displays.timeSpent.textContent = 60 - timeLeft;
+        } else {
+            ui.displays.finalTime.style.display = 'none';
+        }
+        
+        ui.screens.gameOver.style.display = 'flex';
+        checkBonuses(); // Перевірка бонусів ТІЛЬКИ після програшу
     }
-    updateSettingsDisplay();
-}
-
-function saveSettings() {
-    localStorage.setItem('perkyCoffeeSettings', JSON.stringify(gameSettings));
-}
-
-function updateSettingsDisplay() {
-    document.getElementById('gyroToggle').classList.toggle('active', gameSettings.gyro);
-    document.getElementById('soundToggle').classList.toggle('active', gameSettings.sound);
-    document.getElementById('vibrationToggle').classList.toggle('active', gameSettings.vibration);
-    document.getElementById('autoSeasonToggle').classList.toggle('active', gameSettings.autoSeason);
-    document.getElementById('fpsToggle').classList.toggle('active', gameSettings.showFPS);
-    gyroEnabled = gameSettings.gyro;
-}
 
 
-// --- GAME FLOW ---
+    /**
+     * ========================================
+     * ЛОГІКА ОНОВЛЕННЯ СТАНУ (UPDATE)
+     * ========================================
+     */
 
-function startGame(mode) {
-    gameMode = mode;
-    gameState = 'playing';
-    
-    // Reset stats for the current game
-    score = 0;
-    height = 0;
-    coffeeCount = 0;
-    timeLeft = 60;
-    bonusesShown = { discount2: false, discount5: false, brandedCup: false };
-    
-    // Apply mode styling and configs
-    const modeConfig = gameModes[mode];
-    document.querySelector('.game-container').style.background = modeConfig.background;
-    
-    // Initialize game elements
-    initPlayer();
-    initPlatforms();
-    initCoffees();
-    camera.y = 0;
-    camera.targetY = 0;
-    particles = [];
-    
-    // Hide menus, show game UI
-    document.getElementById('menuScreen').style.display = 'none';
-    document.getElementById('gameOverScreen').style.display = 'none';
-    document.getElementById('timeDisplay').style.display = modeConfig.timed ? 'block' : 'none';
-    
-    if (modeConfig.timed) startTimer();
-    
-    // Start game loop
-    gameLoop();
-}
+    function update(deltaTime) {
+        // Оновлення складності
+        difficultyTimer += deltaTime;
+        if (difficultyTimer > config.difficulty.increaseInterval) {
+            if(config.player.speed < config.difficulty.maxSpeed) {
+                config.player.speed += config.difficulty.speedIncrement;
+            }
+            difficultyTimer = 0;
+        }
 
-function endGame() {
-    gameState = 'gameOver';
-    
-    if (gameTimer) clearInterval(gameTimer);
-    if (animationId) cancelAnimationFrame(animationId);
-    
-    // Update and save persistent stats
-    gameStats.gamesPlayed++;
-    gameStats.totalCoffee += coffeeCount;
-    
-    let newRecords = [];
-    if (height > gameStats.bestHeight) {
-        gameStats.bestHeight = height;
-        newRecords.push('висота');
-    }
-    if (coffeeCount > gameStats.bestCoffee) {
-        gameStats.bestCoffee = coffeeCount;
-        newRecords.push('кавові зерна');
-    }
-    
-    saveStats();
-    updateStatsDisplay();
-    
-    // Show game over screen with final scores
-    document.getElementById('finalCoffee').textContent = coffeeCount;
-    document.getElementById('finalHeight').textContent = height;
-    document.getElementById('finalTime').style.display = gameModes[gameMode].timed ? 'block' : 'none';
-    if (gameModes[gameMode].timed) {
-        document.getElementById('timeSpent').textContent = 60 - timeLeft;
-    }
-    
-    const existingRecord = document.querySelector('.new-record-message');
-    if (existingRecord) existingRecord.remove();
-    
-    if (newRecords.length > 0) {
-        const recordMessage = document.createElement('div');
-        recordMessage.className = 'new-record-message';
-        recordMessage.style.cssText = `color: #FFD700; font-size: 18px; font-weight: bold; margin: 15px 0; animation: recordGlow 1s ease-in-out infinite alternate;`;
-        recordMessage.textContent = `🏆 Новий рекорд: ${newRecords.join(', ')}!`;
-        document.querySelector('.final-score').appendChild(recordMessage);
-    }
-    
-    document.getElementById('gameOverScreen').style.display = 'flex';
-    
-    // Check for bonuses after the game ends
-    checkBonuses();
-}
+        // Керування
+        let targetVx = 0;
+        if (config.gyro.enabled && Math.abs(config.gyro.tilt) > 0.05) {
+            targetVx = config.gyro.tilt * (config.player.speed + 2);
+        } else if (ui.buttons.left.pressed) {
+            targetVx = -config.player.speed;
+        } else if (ui.buttons.right.pressed) {
+            targetVx = config.player.speed;
+        }
+        player.vx += (targetVx - player.vx) * 0.2; // Плавний рух
+        player.x += player.vx;
 
-function gameLoop() {
-    if (gameState !== 'playing') return;
-    update();
-    render();
-    animationId = requestAnimationFrame(gameLoop);
-}
+        // Гравітація
+        player.vy += config.player.gravity;
+        player.y += player.vy;
 
+        // Перевірка виходу за межі екрану
+        if (player.x < -player.width) player.x = canvas.width;
+        if (player.x > canvas.width) player.x = -player.width;
 
-// --- UPDATE & RENDER ---
+        // Перевірка падіння
+        if (player.y > cameraY + canvas.height) {
+            endGame();
+            return;
+        }
 
-function update() {
-    // Player movement
-    let moveSpeed = player.speed;
-    if (keys['ArrowLeft'] || touchControls.left) player.vx = -moveSpeed;
-    else if (keys['ArrowRight'] || touchControls.right) player.vx = moveSpeed;
-    else if (gyroEnabled && Math.abs(gyroTilt) > 0.1) player.vx = gyroTilt * moveSpeed;
-    else player.vx *= 0.8; // Friction
+        // Камера
+        let targetCameraY = player.y - canvas.height * 0.4;
+        cameraY += (targetCameraY - cameraY) * 0.1;
 
-    player.vy += 0.8; // Gravity
-    player.x += player.vx;
-    player.y += player.vy;
-
-    // Screen wrapping
-    if (player.x < -player.width) player.x = canvas.width;
-    if (player.x > canvas.width) player.x = -player.width;
-
-    // Platform collision
-    player.onGround = false;
-    platforms.forEach(platform => {
-        if (platform.broken) return;
-        if (player.vy > 0 &&
-            player.x < platform.x + platform.width &&
-            player.x + player.width > platform.x &&
-            player.y + player.height > platform.y &&
-            player.y + player.height < platform.y + platform.height) {
-            
-            player.y = platform.y - player.height;
-            player.onGround = true;
-            createJumpParticles(player.x + player.width/2, player.y + player.height);
-            vibrate([50]);
-
-            switch (platform.type) {
-                case 'bouncy':
-                    player.vy = player.jumpPower * 1.5;
-                    platform.bounceAnimation = 10;
-                    break;
-                case 'fragile':
-                    player.vy = player.jumpPower;
-                    platform.broken = true;
-                    break;
-                default:
-                    player.vy = player.jumpPower;
+        // Оновлення висоти
+        let currentHeight = Math.max(0, Math.floor(-(player.y - (canvas.height - 50)) / 10));
+        if (currentHeight > height) {
+            height = currentHeight;
+            if (height > userStats.highScore) {
+                ui.displays.bestHeight.classList.add('new-record-animation');
             }
         }
-        if (platform.bounceAnimation > 0) platform.bounceAnimation--;
-    });
 
-    // Coffee collection
-    coffees.forEach(coffee => {
-        if (!coffee.collected &&
-            player.x < coffee.x + coffee.width &&
-            player.x + player.width > coffee.x &&
-            player.y < coffee.y + coffee.height &&
-            player.y + player.height > coffee.y) {
-            
-            coffee.collected = true;
-            coffeeCount++;
-            score += 10;
-            gameStats.experience += 5;
-            createCollectionParticles(coffee.x + coffee.width/2, coffee.y + coffee.height/2);
-            vibrate([20]);
-        }
-        coffee.bounce += 0.1;
-    });
+        // Перевірка зіткнень з платформами
+        player.onPlatform = null;
+        for (const platform of platforms) {
+            if (
+                player.vy > 0 &&
+                player.x < platform.x + platform.width &&
+                player.x + player.width > platform.x &&
+                player.y + player.height > platform.y &&
+                player.y + player.height < platform.y + platform.height + 20 // Збільшена зона для стабільності
+            ) {
+                player.onPlatform = platform;
+                player.y = platform.y - player.height;
+                player.vy = config.player.jumpPower;
 
-    // Camera follow
-    camera.targetY = player.y - canvas.height * 0.6;
-    if (camera.targetY < camera.y) {
-        camera.y += (camera.targetY - camera.y) * 0.1;
-    }
-
-    // Update height score
-    const newHeight = Math.max(height, Math.floor((canvas.height - player.y) / 10));
-    if (newHeight > height) {
-        height = newHeight;
-        if (height > gameStats.bestHeight) document.getElementById('bestHeight').classList.add('new-record');
-    }
-
-    // Update particles
-    particles = particles.filter(p => {
-        p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--;
-        return p.life > 0;
-    });
-
-    // Game over condition
-    if (player.y > camera.y + canvas.height + 100) endGame();
-
-    // Update UI
-    document.getElementById('coffeeCount').textContent = coffeeCount;
-    document.getElementById('heightScore').textContent = height;
-    if (coffeeCount > gameStats.bestCoffee) document.getElementById('bestCoffee').classList.add('new-record');
-}
-
-function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(0, -camera.y);
-
-    // Draw game elements
-    platforms.forEach(p => { if (!p.broken) drawPlatform(p) });
-    coffees.forEach(c => { if (!c.collected) drawCoffee(c) });
-    drawPlayer();
-    particles.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.life / p.maxLife;
-        ctx.fillRect(p.x, p.y, p.size, p.size);
-    });
-    ctx.globalAlpha = 1;
-
-    ctx.restore();
-}
-
-// --- DRAWING FUNCTIONS ---
-
-function drawPlayer() {
-    // A more detailed robot design
-    const bodyColor = '#B0C4DE';
-    const headColor = '#D3D3D3';
-    const eyeColor = '#FF4500';
-
-    // Body
-    ctx.fillStyle = bodyColor;
-    ctx.fillRect(player.x, player.y + 10, player.width, player.height - 10);
-    // Head
-    ctx.fillStyle = headColor;
-    ctx.fillRect(player.x + 5, player.y, player.width - 10, 12);
-    // Eye
-    ctx.fillStyle = eyeColor;
-    ctx.beginPath();
-    ctx.arc(player.x + player.width / 2, player.y + 6, 4, 0, Math.PI * 2);
-    ctx.fill();
-    // Antenna
-    ctx.strokeStyle = '#696969';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(player.x + player.width / 2, player.y);
-    ctx.lineTo(player.x + player.width / 2, player.y - 5);
-    ctx.stroke();
-    // Antenna light
-    ctx.fillStyle = '#ADFF2F';
-    ctx.beginPath();
-    ctx.arc(player.x + player.width / 2, player.y - 7, 3, 0, Math.PI * 2);
-    ctx.fill();
-}
-
-
-function drawPlatform(platform) {
-    switch (platform.type) {
-        case 'bouncy': ctx.fillStyle = '#4CAF50'; break;
-        case 'fragile': ctx.fillStyle = '#F44336'; break;
-        default: ctx.fillStyle = gameModes[gameMode].platformColor;
-    }
-    
-    let yOffset = platform.type === 'bouncy' && platform.bounceAnimation > 0 ? Math.sin(platform.bounceAnimation * 0.5) * 3 : 0;
-    ctx.fillRect(platform.x, platform.y + yOffset, platform.width, platform.height);
-}
-
-function drawCoffee(coffee) {
-    const bounceOffset = Math.sin(coffee.bounce) * 3;
-    const centerX = coffee.x + coffee.width / 2;
-    const centerY = coffee.y + coffee.height / 2 + bounceOffset;
-    
-    // Gradient for coffee bean
-    const gradient = ctx.createRadialGradient(centerX - 3, centerY - 3, 0, centerX, centerY, coffee.width / 2);
-    gradient.addColorStop(0, '#D2691E');
-    gradient.addColorStop(0.7, '#8B4513');
-    gradient.addColorStop(1, '#654321');
-    
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, coffee.width / 2, coffee.height / 2, 0, 0, Math.PI * 2);
-    ctx.fill();
-}
-
-// --- PARTICLE EFFECTS ---
-
-function createJumpParticles(x, y) {
-    for (let i = 0; i < 8; i++) {
-        particles.push({ x, y, vx: (Math.random() - 0.5) * 6, vy: Math.random() * -3, size: Math.random() * 4 + 2, color: '#FFD700', life: 30, maxLife: 30 });
-    }
-}
-
-function createCollectionParticles(x, y) {
-    for (let i = 0; i < 12; i++) {
-        particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, size: Math.random() * 3 + 1, color: '#8B4513', life: 40, maxLife: 40 });
-    }
-}
-
-
-// --- UI & BONUSES ---
-
-function checkBonuses() {
-    if (coffeeCount >= 50 && !bonusesShown.discount2) {
-        showBonus('discount2', '2% знижка на каву!', 'Покажіть це бариста для отримання знижки 2% на напій.');
-        bonusesShown.discount2 = true;
-    } else if (coffeeCount >= 100 && !bonusesShown.discount5) {
-        showBonus('discount5', '5% знижка на каву!', 'Покажіть це бариста для отримання знижки 5% на напій.');
-        bonusesShown.discount5 = true;
-    } else if (coffeeCount >= 5000 && !bonusesShown.brandedCup) {
-        showBonus('brandedCup', '🥤 Брендований стакан!', 'Покажіть це бариста для отримання безкоштовного стакану Perky Coffee!');
-        bonusesShown.brandedCup = true;
-    }
-}
-
-function showBonus(type, title, instruction) {
-    if (gameState !== 'gameOver') return;
-    document.getElementById('bonusTitle').textContent = '🎁 ' + title;
-    document.getElementById('bonusContent').innerHTML = `<div style="font-size: 20px; margin: 10px 0;">☕ Зібрано ${coffeeCount} зерен!</div>`;
-    document.getElementById('bonusInstruction').textContent = instruction;
-    document.getElementById('bonusPopup').style.display = 'block';
-
-    bonusTimeLeft = 600; // 10 minutes
-    updateBonusTimer();
-    bonusTimer = setInterval(() => {
-        bonusTimeLeft--;
-        updateBonusTimer();
-        if (bonusTimeLeft <= 0) closeBonusPopup();
-    }, 1000);
-}
-
-function updateBonusTimer() {
-    const minutes = Math.floor(bonusTimeLeft / 60);
-    const seconds = bonusTimeLeft % 60;
-    document.getElementById('bonusTimer').textContent = `⏰ Закриється через: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
-
-function closeBonusPopup() {
-    document.getElementById('bonusPopup').style.display = 'none';
-    if (bonusTimer) clearInterval(bonusTimer);
-}
-
-function switchMenuTab(tabName) {
-    document.querySelectorAll('.menu-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === tabName));
-    document.querySelectorAll('#playTab, #progressTab, #socialTab, #settingsTab').forEach(content => content.style.display = 'none');
-    document.getElementById(tabName + 'Tab').style.display = 'block';
-    if (tabName === 'progress') updateStatsDisplay();
-}
-
-
-// --- INPUT & CONTROLS ---
-
-function initGyroscope() {
-    if (window.DeviceOrientationEvent) {
-        window.addEventListener('deviceorientation', (event) => {
-            if (gyroEnabled && gameState === 'playing') {
-                gyroTilt = event.gamma || 0;
-                // Increased sensitivity from ±30° to ±20°
-                gyroTilt = Math.max(-20, Math.min(20, gyroTilt)) / 20;
-            }
-        });
-    }
-}
-
-function requestGyroPermission() {
-    if (gameSettings.gyro && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission()
-            .then(response => {
-                if (response === 'granted') {
-                    gyroEnabled = true;
-                    initGyroscope();
-                } else {
-                    // Gyro denied, update setting
-                    gameSettings.gyro = false;
-                    updateSettingsDisplay();
-                    saveSettings();
+                vibrateDevice([50]);
+                
+                // Ефекти платформ
+                if (platform.type === 'bouncy') {
+                    player.vy *= 1.6;
+                    platform.isBouncing = true;
                 }
-            }).catch(console.error);
-    } else {
-        gyroEnabled = gameSettings.gyro;
-        initGyroscope();
+                if (platform.type === 'fragile' && !platform.isBroken) {
+                    platform.isBroken = true;
+                }
+                
+                // Виходимо з циклу після першого зіткнення
+                break; 
+            }
+        }
+
+        // Збір кавових зерен
+        for (let i = coffees.length - 1; i >= 0; i--) {
+            const coffee = coffees[i];
+            if (
+                player.x < coffee.x + 15 &&
+                player.x + player.width > coffee.x - 15 &&
+                player.y < coffee.y + 15 &&
+                player.y + player.height > coffee.y - 15
+            ) {
+                coffees.splice(i, 1);
+                coffeeCount++;
+                vibrateDevice([30]);
+                if (coffeeCount > userStats.bestCoffee) {
+                    ui.displays.bestCoffee.classList.add('new-record-animation');
+                }
+            }
+        }
+        
+        // Генерація та видалення платформ
+        if (platforms[0].y > cameraY + canvas.height) {
+            platforms.shift();
+            generateNextPlatform();
+        }
+
+        // Оновлення UI
+        ui.displays.heightScore.textContent = height;
+        ui.displays.coffeeCount.textContent = coffeeCount;
+        ui.displays.bestHeight.textContent = userStats.highScore;
+        ui.displays.bestCoffee.textContent = userStats.bestCoffee || 0;
     }
-}
 
-function vibrate(pattern = [100]) {
-    if (gameSettings.vibration && navigator.vibrate) {
-        navigator.vibrate(pattern);
+    /**
+     * ========================================
+     * ЛОГІКА ВІДОБРАЖЕННЯ (RENDER)
+     * ========================================
+     */
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Малюємо фон
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        const [color1, color2] = currentTheme.bg.match(/#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/g);
+        gradient.addColorStop(0, color1);
+        gradient.addColorStop(1, color2);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Хмари
+        renderClouds();
+
+        ctx.save();
+        ctx.translate(0, -cameraY);
+
+        // Малюємо платформи
+        for (const platform of platforms) {
+            if (platform.isBroken && platform.opacity > 0) {
+                platform.opacity -= 0.05;
+            }
+            ctx.globalAlpha = platform.opacity;
+
+            ctx.fillStyle = platform.color;
+            let bounceOffset = 0;
+            if (platform.isBouncing) {
+                platform.bounceFrame = (platform.bounceFrame || 0) + 1;
+                bounceOffset = Math.sin(platform.bounceFrame * 0.5) * 5;
+                if(platform.bounceFrame > 20) platform.isBouncing = false;
+            }
+
+            ctx.fillRect(platform.x, platform.y + bounceOffset, platform.width, platform.height);
+        }
+        ctx.globalAlpha = 1;
+
+        // Малюємо кавові зерна
+        for (const coffee of coffees) {
+            ctx.fillStyle = '#6F4E37';
+            ctx.beginPath();
+            ctx.ellipse(coffee.x, coffee.y, 8, 10, Math.PI / 4, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+
+        // Малюємо гравця
+        ctx.font = '30px sans-serif';
+        ctx.fillText(player.skin, player.x, player.y + player.height - 5);
+        
+        ctx.restore();
     }
-}
+    
+    function renderClouds() {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        clouds.forEach(cloud => {
+            ctx.beginPath();
+            ctx.arc(cloud.x, cloud.y - cameraY * 0.5, cloud.r, 0, 2 * Math.PI);
+            ctx.closePath();
+            ctx.fill();
+
+            // Рух хмар
+            cloud.x += cloud.speed;
+            if (cloud.x > canvas.width + cloud.r) {
+                cloud.x = -cloud.r;
+            }
+        });
+    }
+
+    /**
+     * ========================================
+     * ДОПОМІЖНІ ФУНКЦІЇ
+     * ========================================
+     */
+
+    function createPlatform(x, y, type) {
+        let color = currentTheme.platform;
+        if (type === 'bouncy') color = '#32CD32';
+        if (type === 'fragile') color = '#FF4500';
+
+        return {
+            x, y, type, color,
+            width: config.platform.width,
+            height: config.platform.height,
+            isBroken: false,
+            opacity: 1,
+        };
+    }
+
+    function generateNextPlatform() {
+        const lastPlatform = platforms[platforms.length - 1];
+        
+        let newY = lastPlatform.y - (config.platform.minGapY + Math.random() * (config.platform.maxGapY - config.platform.minGapY));
+        let newX = lastPlatform.x + (Math.random() - 0.5) * config.platform.maxGapX;
+        
+        // Перевірка, щоб платформа не виходила за межі екрану
+        newX = Math.max(0, Math.min(newX, canvas.width - config.platform.width));
+
+        let type = 'normal';
+        const rand = Math.random();
+        if (rand < 0.15) type = 'bouncy'; // 15%
+        else if (rand < 0.25) type = 'fragile'; // 10%
+        
+        platforms.push(createPlatform(newX, newY, type));
+
+        // Додавання кавових зерен
+        if (Math.random() < 0.4) {
+            coffees.push({ x: newX + config.platform.width / 2, y: newY - 20 });
+        }
+    }
+
+    function startTimer() {
+        gameTimer = setInterval(() => {
+            timeLeft--;
+            ui.displays.timeLeft.textContent = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(gameTimer);
+                endGame();
+            }
+        }, 1000);
+    }
+    
+    function vibrateDevice(pattern) {
+        if (config.vibration.enabled && navigator.vibrate) {
+            navigator.vibrate(pattern);
+        }
+    }
+    
+    // Визначення сезону
+    function setSeasonalTheme() {
+        const date = new Date();
+        const month = date.getMonth();
+        const day = date.getDate();
+
+        if (month === 9 && day >= 24 && day <= 31) {
+            currentTheme = themes.halloween;
+        } else if (month === 1 && day >= 7 && day <= 14) {
+            currentTheme = themes.valentines;
+        } else if (month >= 2 && month <= 4) {
+            currentTheme = themes.spring;
+        } else if (month >= 5 && month <= 7) {
+            currentTheme = themes.summer;
+        } else if (month >= 8 && month <= 10) {
+            currentTheme = themes.autumn;
+        } else {
+            currentTheme = themes.winter;
+        }
+    }
+    
+    // Ініціалізація хмар
+    function initClouds() {
+        clouds = [];
+        for (let i = 0; i < 5; i++) {
+            clouds.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                r: Math.random() * 20 + 20,
+                speed: Math.random() * 0.2 + 0.1,
+            });
+        }
+    }
+    
+     /**
+     * ========================================
+     * ЛОГІКА БОНУСІВ
+     * ========================================
+     */
+    function checkBonuses() {
+        let bonus = null;
+        if (coffeeCount >= 5000) {
+            bonus = { title: '🎁 Брендована чашка!', instruction: 'Покажіть це бариста, щоб отримати вашу брендовану чашку Perky Coffee!' };
+        } else if (coffeeCount >= 200) {
+            bonus = { title: '🎁 Знижка 5%!', instruction: 'Покажіть це бариста, щоб отримати знижку 5% на будь-який напій.' };
+        } else if (coffeeCount >= 100) {
+            bonus = { title: '🎁 Знижка 2%!', instruction: 'Покажіть це бариста, щоб отримати знижку 2% на будь-який напій.' };
+        }
+
+        if (bonus) {
+            showBonusPopup(bonus.title, bonus.instruction);
+        }
+    }
+
+    function showBonusPopup(title, instruction) {
+        ui.popups.bonusTitle.textContent = title;
+        ui.popups.bonusContent.textContent = `Ви зібрали ${coffeeCount} зерен!`;
+        ui.popups.bonusInstruction.textContent = instruction;
+        ui.popups.bonus.classList.add('show');
+
+        let timeLeft = 600; // 10 хвилин
+        
+        const updateTimer = () => {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            ui.popups.bonusTimer.textContent = `⏰ Час дії: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            if (timeLeft <= 0) {
+                hideBonusPopup();
+            }
+            timeLeft--;
+        };
+
+        updateTimer();
+        bonusTimer = setInterval(updateTimer, 1000);
+    }
+    
+    function hideBonusPopup() {
+        ui.popups.bonus.classList.remove('show');
+        if (bonusTimer) clearInterval(bonusTimer);
+    }
+
+    /**
+     * ========================================
+     * РОБОТА З СЕРВЕРОМ
+     * ========================================
+     */
+    async function saveStatsOnServer() {
+        if (!userStats.id) return;
+        try {
+            await fetch('/save_stats', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userStats.id,
+                    username: userStats.username,
+                    score: height,
+                    collected_beans: coffeeCount,
+                }),
+            });
+        } catch (error) {
+            console.error('Failed to save stats:', error);
+        }
+    }
+
+    async function fetchUserStats() {
+        if (!userStats.id) return;
+        try {
+            const response = await fetch(`/stats/${userStats.id}`);
+            const data = await response.json();
+            if (data && !data.error) {
+                userStats.highScore = data.high_score || 0;
+                userStats.totalBeans = data.total_beans || 0;
+                userStats.gamesPlayed = data.games_played || 0;
+                userStats.bestCoffee = data.best_coffee || 0;
+                userStats.purchasedSkins = data.purchased_skins ? JSON.parse(data.purchased_skins) : ['default'];
+                userStats.currentSkin = data.current_skin || 'default';
+            }
+        } catch (error) {
+            console.error('Failed to fetch stats:', error);
+        }
+        updateStatsUI();
+        updateShopUI();
+        updateCustomizeUI();
+    }
+    
+    async function fetchLeaderboard() {
+        try {
+            const response = await fetch('/leaderboard');
+            const data = await response.json();
+            if (data.leaderboard) {
+                updateLeaderboardUI(data.leaderboard);
+            }
+        } catch (error) {
+            console.error('Failed to fetch leaderboard:', error);
+        }
+    }
+
+     /**
+     * ========================================
+     * ОНОВЛЕННЯ UI
+     * ========================================
+     */
+    function updateStatsUI() {
+        ui.containers.stats.innerHTML = `
+            <div>🏆 Рекорд висоти: ${userStats.highScore} м</div>
+            <div>☕ Рекорд зерен: ${userStats.bestCoffee || 0}</div>
+            <div>🎮 Всього ігор: ${userStats.gamesPlayed}</div>
+            <div>💰 Всього зерен: ${userStats.totalBeans}</div>
+        `;
+    }
+
+    function updateLeaderboardUI(leaderboard) {
+        if (leaderboard.length === 0) {
+            ui.containers.leaderboard.innerHTML = `<p style="color: white; text-align: center;">Таблиця лідерів порожня. Будьте першим!</p>`;
+            return;
+        }
+        const emoji = ['🥇', '🥈', '🥉'];
+        ui.containers.leaderboard.innerHTML = leaderboard.map((player, index) => `
+            <div class="leaderboard-item">
+                <span class="leaderboard-rank rank-${index + 1}">${emoji[index] || (index + 1) + '.'}</span>
+                <span class="leaderboard-name">${player.username || 'Гравець'}</span>
+                <span class="leaderboard-score">${player.high_score} м</span>
+            </div>
+        `).join('');
+    }
+    
+    function updateShopUI() {
+        ui.displays.shopCoins.textContent = userStats.totalBeans;
+        // Тут буде логіка відображення товарів, коли вони будуть реалізовані
+        ui.containers.shopGrid.innerHTML = `<p style="color: #555; text-align: center;">Магазин у розробці. Збирайте зерна!</p>`;
+    }
+    
+    function updateCustomizeUI() {
+        ui.displays.customizeCoins.textContent = userStats.totalBeans;
+        ui.containers.skinsGrid.innerHTML = '';
+        for (const [id, skin] of Object.entries(skins)) {
+            const isPurchased = userStats.purchasedSkins.includes(id);
+            const isActive = (userStats.currentSkin || 'default') === id;
+            const canAfford = userStats.totalBeans >= skin.price;
+
+            const item = document.createElement('div');
+            item.className = 'customize-item';
+            if (isActive) item.classList.add('active');
+            if (!isPurchased && !canAfford) item.classList.add('locked');
+            
+            item.innerHTML = `
+                <div class="customize-preview">${skin.emoji}</div>
+                <div class="customize-name">${skin.name}</div>
+                <div class="customize-cost">${isPurchased ? 'Придбано' : skin.price + ' ☕'}</div>
+            `;
+            
+            item.onclick = () => handleSkinSelection(id, skin.price, isPurchased);
+            ui.containers.skinsGrid.appendChild(item);
+        }
+    }
+    
+    async function handleSkinSelection(id, price, isPurchased) {
+        if (isPurchased) {
+            userStats.currentSkin = id;
+        } else if (userStats.totalBeans >= price) {
+            userStats.totalBeans -= price;
+            userStats.purchasedSkins.push(id);
+            userStats.currentSkin = id;
+        } else {
+            // Можна додати повідомлення "недостатньо зерен"
+            return;
+        }
+        
+        await saveSkinSettings();
+        updateCustomizeUI();
+    }
+    
+    async function saveSkinSettings() {
+        if (!userStats.id) return;
+        try {
+            await fetch('/save_skins', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userStats.id,
+                    purchased_skins: JSON.stringify(userStats.purchasedSkins),
+                    current_skin: userStats.currentSkin
+                }),
+            });
+        } catch (error) {
+            console.error('Failed to save skin settings:', error);
+        }
+    }
+
+    /**
+     * ========================================
+     * ОБРОБНИКИ ПОДІЙ
+     * ========================================
+     */
+    function setupEventListeners() {
+        // Керування з клавіатури
+        const keyMap = { 'ArrowLeft': 'left', 'KeyA': 'left', 'ArrowRight': 'right', 'KeyD': 'right' };
+        document.addEventListener('keydown', (e) => {
+            if (gameState !== 'playing') return;
+            const direction = keyMap[e.code];
+            if (direction) ui.buttons[direction].pressed = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            if (gameState !== 'playing') return;
+            const direction = keyMap[e.code];
+            if (direction) ui.buttons[direction].pressed = false;
+        });
+
+        // Керування дотиком
+        function handleTouch(e, isPressed) {
+            for (const touch of e.changedTouches) {
+                if (touch.clientX < window.innerWidth / 2) {
+                    ui.buttons.left.pressed = isPressed;
+                } else {
+                    ui.buttons.right.pressed = isPressed;
+                }
+            }
+        }
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouch(e, true); }, { passive: false });
+        canvas.addEventListener('touchend', (e) => { e.preventDefault(); handleTouch(e, false); }, { passive: false });
+        
+        // Керування мишкою (для десктопу)
+        ui.buttons.left.addEventListener('mousedown', () => ui.buttons.left.pressed = true);
+        ui.buttons.left.addEventListener('mouseup', () => ui.buttons.left.pressed = false);
+        ui.buttons.left.addEventListener('mouseleave', () => ui.buttons.left.pressed = false);
+        ui.buttons.right.addEventListener('mousedown', () => ui.buttons.right.pressed = true);
+        ui.buttons.right.addEventListener('mouseup', () => ui.buttons.right.pressed = false);
+        ui.buttons.right.addEventListener('mouseleave', () => ui.buttons.right.pressed = false);
+
+        // Кнопки інтерфейсу
+        ui.buttons.restart.addEventListener('click', () => startGame(gameMode));
+        ui.buttons.toMenu.addEventListener('click', showMenu);
+        ui.popups.closeBonus.addEventListener('click', hideBonusPopup);
+
+        // Навігація в меню
+        ui.buttons.shop.addEventListener('click', () => showScreen('shop'));
+        ui.buttons.shopBack.addEventListener('click', showMenu);
+        ui.buttons.customize.addEventListener('click', () => showScreen('customize'));
+        ui.buttons.customizeBack.addEventListener('click', showMenu);
+
+        // Перемикання вкладок меню
+        ui.tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.tab;
+                ui.tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                ui.tabSections.forEach(section => {
+                    section.style.display = 'none';
+                    if (section.id === `${targetTab}Tab`) {
+                        section.style.display = 'block';
+                    }
+                });
+
+                if (targetTab === 'social') fetchLeaderboard();
+                if (targetTab === 'progress') fetchUserStats();
+            });
+        });
+        
+        // Перемикачі налаштувань
+        ui.toggles.vibration.addEventListener('click', () => {
+            config.vibration.enabled = !config.vibration.enabled;
+            ui.toggles.vibration.classList.toggle('active', config.vibration.enabled);
+        });
+
+        ui.toggles.gyro.addEventListener('click', () => {
+            if (!config.gyro.enabled) {
+                requestGyroPermission();
+            } else {
+                config.gyro.enabled = false;
+                ui.toggles.gyro.classList.toggle('active', false);
+            }
+        });
+        
+        // Запуск гри з меню
+        document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
+            btn.addEventListener('click', () => startGame(btn.dataset.mode));
+        });
+        
+        // Зміна розміру вікна
+        window.addEventListener('resize', resizeCanvas);
+    }
+    
+    function showScreen(screenName) {
+        for (const screen in ui.screens) {
+            ui.screens[screen].style.display = 'none';
+        }
+        ui.screens[screenName].style.display = 'flex';
+    }
+
+    function showMenu() {
+        gameState = 'menu';
+        showScreen('menu');
+        document.querySelector('.menu-tab[data-tab="play"]').click();
+        fetchUserStats();
+    }
+    
+     /**
+     * ========================================
+     * ГІРОСКОП
+     * ========================================
+     */
+    function requestGyroPermission() {
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+                .then(response => {
+                    if (response === 'granted') {
+                        window.addEventListener('deviceorientation', handleGyro);
+                        config.gyro.enabled = true;
+                        ui.toggles.gyro.classList.add('active');
+                    }
+                })
+                .catch(() => { config.gyro.enabled = false; });
+        } else {
+            // Для Android та інших пристроїв без запиту дозволу
+             window.addEventListener('deviceorientation', handleGyro);
+             config.gyro.enabled = true;
+             ui.toggles.gyro.classList.add('active');
+        }
+    }
+
+    function handleGyro(event) {
+        // gamma: нахил вліво-вправо
+        let tilt = event.gamma || 0;
+        config.gyro.tilt = Math.max(-1, Math.min(1, tilt / config.gyro.sensitivity));
+    }
 
 
-// --- EVENT LISTENERS ---
+    /**
+     * ========================================
+     * ІНІЦІАЛІЗАЦІЯ
+     * ========================================
+     */
+    function init() {
+        resizeCanvas();
+        setSeasonalTheme();
+        initClouds();
+        setupEventListeners();
+        showMenu(); // Починаємо з меню
+    }
+    
+    // Запускаємо все
+    init();
 
-document.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
-document.addEventListener('keyup', e => { keys[e.code] = false; });
+})();
 
-const controls = {
-    leftBtn: document.getElementById('leftBtn'),
-    rightBtn: document.getElementById('rightBtn')
-};
-
-['touchstart', 'mousedown'].forEach(evt => {
-    controls.leftBtn.addEventListener(evt, e => { touchControls.left = true; e.preventDefault(); });
-    controls.rightBtn.addEventListener(evt, e => { touchControls.right = true; e.preventDefault(); });
-});
-['touchend', 'mouseup', 'mouseleave'].forEach(evt => {
-    controls.leftBtn.addEventListener(evt, e => { touchControls.left = false; e.preventDefault(); });
-    controls.rightBtn.addEventListener(evt, e => { touchControls.right = false; e.preventDefault(); });
-});
-
-document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => btn.addEventListener('click', () => startGame(btn.dataset.mode)));
-document.getElementById('restartBtn').addEventListener('click', () => startGame(gameMode));
-document.getElementById('menuBtn').addEventListener('click', () => {
-    gameState = 'menu';
-    document.getElementById('gameOverScreen').style.display = 'none';
-    document.getElementById('menuScreen').style.display = 'flex';
-    document.querySelector('.game-container').style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-});
-
-document.getElementById('closeBonusBtn').addEventListener('click', closeBonusPopup);
-document.querySelectorAll('.menu-tab').forEach(tab => tab.addEventListener('click', () => switchMenuTab(tab.dataset.tab)));
-
-// Settings Toggles
-document.getElementById('gyroToggle').addEventListener('click', () => {
-    gameSettings.gyro = !gameSettings.gyro;
-    requestGyroPermission(); // Request permission if toggled on
-    updateSettingsDisplay();
-    saveSettings();
-});
-document.getElementById('soundToggle').addEventListener('click', () => { gameSettings.sound = !gameSettings.sound; updateSettingsDisplay(); saveSettings(); });
-document.getElementById('vibrationToggle').addEventListener('click', () => { gameSettings.vibration = !gameSettings.vibration; updateSettingsDisplay(); saveSettings(); });
-document.getElementById('autoSeasonToggle').addEventListener('click', () => { gameSettings.autoSeason = !gameSettings.autoSeason; updateSettingsDisplay(); saveSettings(); });
-document.getElementById('fpsToggle').addEventListener('click', () => { gameSettings.showFPS = !gameSettings.showFPS; updateSettingsDisplay(); saveSettings(); });
-
-window.addEventListener('resize', resizeCanvas);
-document.addEventListener('contextmenu', e => e.preventDefault());
-
-
-// --- INITIAL GAME LAUNCH ---
-
-resizeCanvas();
-loadStats();
-loadSettings();
-requestGyroPermission(); // Attempt to activate gyro on load if enabled in settings
