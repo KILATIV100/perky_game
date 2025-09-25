@@ -4,7 +4,6 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from telegram import Update
 from telegram.error import RetryAfter
-import asyncio
 
 # Імпортуємо роутер, конфігурацію та логіку бота
 from api import router as api_router
@@ -22,30 +21,35 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """
     Функція, що виконується при старті та зупинці додатку.
-    Ідеальне місце для ініціалізації бота.
     """
     logger.info("Запуск додатка...")
     await setup_bot_handlers()
     
     try:
+        # Намагаємося встановити вебхук
         await perky_bot.application.bot.set_webhook(
             url=perky_bot.webhook_url,
             allowed_updates=["message", "callback_query"]
         )
         logger.info(f"Вебхук встановлено на: {perky_bot.webhook_url}")
     except RetryAfter as e:
-        logger.warning(f"Telegram flood control: чекаємо {e.retry_after} секунд. Вебхук, ймовірно, вже встановлено іншим процесом.")
-        await asyncio.sleep(e.retry_after)
+        # Якщо отримуємо помилку флуду, просто логуємо це.
+        # Це означає, що інший процес вже встановив вебхук, і це нормально.
+        logger.warning(f"Помилка встановлення вебхука (Flood control). Ймовірно, він вже встановлений іншим процесом.")
     except Exception as e:
-        logger.error(f"Не вдалося встановити вебхук: {e}")
+        logger.error(f"Критична помилка при встановленні вебхука: {e}")
 
-    yield
+    yield # Додаток працює тут
     
+    # Цей код виконається при зупинці сервера
     logger.info("Зупинка додатка...")
-    await perky_bot.application.bot.delete_webhook()
-    logger.info("Вебхук видалено.")
+    try:
+        await perky_bot.application.bot.delete_webhook()
+        logger.info("Вебхук видалено.")
+    except Exception as e:
+        logger.error(f"Помилка при видаленні вебхука: {e}")
 
-# Створюємо FastAPI додаток з налаштованим життєвим циклом
+# Створюємо FastAPI додаток
 app = FastAPI(lifespan=lifespan, title="Perky Coffee Jump")
 
 # Підключаємо роути для гри (/game, /save_stats, etc.)
@@ -53,7 +57,7 @@ app.include_router(api_router)
 
 @app.get("/", include_in_schema=False)
 async def root_redirect():
-    """Перенаправляє користувачів з кореневого URL на сторінку гри."""
+    """Перенаправляє з кореневого URL на сторінку гри."""
     return RedirectResponse(url="/game")
 
 @app.post(f"/{BOT_TOKEN}")
@@ -75,3 +79,4 @@ async def telegram_webhook(request: Request):
     except Exception as e:
         logger.error(f"Помилка обробки вебхука: {e}")
         return {"status": "error handled"}
+
