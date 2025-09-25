@@ -19,19 +19,17 @@ app = FastAPI(title="Perky Coffee Jump WebApp")
 
 # --- WEBHOOK РОУТ ---
 # Цей роут приймає оновлення від Telegram.
-# Ми перенесли його сюди з api.py для надійності.
 @app.post(f"/{BOT_TOKEN}")
 async def telegram_webhook(request: Request):
-    """Обробляє вхідні оновлення від Telegram."""
+    """Обробляє вхідні оновлення від Telegram, використовуючи правильний контекст."""
     try:
         data = await request.json()
-        if perky_bot.application:
+        # ВИПРАВЛЕННЯ: Використовуємо 'async with' для коректної ініціалізації
+        # та обробки оновлення, як того вимагає бібліотека.
+        async with perky_bot.application:
             update = Update.de_json(data, perky_bot.application.bot)
             await perky_bot.application.process_update(update)
-            return {"status": "ok"}
-        else:
-            logger.warning("Отримано вебхук, але бот ще не ініціалізований.")
-            return {"status": "bot not ready"}, 503
+        return {"status": "ok"}
     except Exception as e:
         logger.error(f"Помилка обробки вебхука: {e}")
         return {"status": "error"}
@@ -42,7 +40,6 @@ async def telegram_webhook(request: Request):
 app.include_router(api_router)
 
 # Вказуємо, що тека 'static' містить статичні файли (css, js, html).
-# Це дозволить коректно завантажувати вашу гру.
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- ЗАПУСК ДОДАТКУ ---
@@ -52,4 +49,3 @@ async def on_startup():
     logger.info("Запуск налаштування Telegram-бота...")
     await setup_bot()
     logger.info("Налаштування бота завершено!")
-
