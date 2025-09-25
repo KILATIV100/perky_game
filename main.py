@@ -6,7 +6,8 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 import logging
 
-from api import api_router
+# Змінено імпорт для уникнення можливих конфліктів імен
+from api import router
 from bot import setup_bot
 from config import PORT
 
@@ -27,8 +28,8 @@ async def startup_event():
     logging.info("Налаштування бота завершено!")
 
 # Підключення роутера з ендпоінтами з файлу api.py.
-# Всі шляхи, визначені в api_router, будуть доступні в нашому додатку.
-app.include_router(api_router)
+# Всі шляхи, визначені в router, будуть доступні в нашому додатку.
+app.include_router(router)
 
 # Монтування статичних файлів (CSS, JS).
 # Це дозволить серверу віддавати файли з теки 'static' за шляхом '/static'.
