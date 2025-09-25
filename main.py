@@ -1,42 +1,55 @@
 # main.py: Головний файл для запуску FastAPI-додатку.
-# Він ініціалізує додаток, підключає роутери та налаштовує запуск бота.
+# Він ініціалізує додаток, підключає роутери та запускає налаштування бота.
 
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-import uvicorn
 import logging
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from telegram import Update
 
-# Змінено імпорт для уникнення можливих конфліктів імен
-from api import router
-from bot import setup_bot
-from config import PORT
+from config import BOT_TOKEN
+from api import router as api_router
+from bot import setup_bot, perky_bot
 
-# Налаштування логування для виводу інформації в консоль.
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-)
+# Налаштування логування для виводу інформації в консоль
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Створення основного екземпляру FastAPI додатку.
+# Створення основного екземпляру FastAPI
 app = FastAPI(title="Perky Coffee Jump WebApp")
 
-@app.on_event("startup")
-async def startup_event():
-    """Виконується один раз при запуску сервера."""
-    logging.info("Запуск налаштування Telegram-бота...")
-    await setup_bot()
-    logging.info("Налаштування бота завершено!")
+# --- WEBHOOK РОУТ ---
+# Цей роут приймає оновлення від Telegram.
+# Ми перенесли його сюди з api.py для надійності.
+@app.post(f"/{BOT_TOKEN}")
+async def telegram_webhook(request: Request):
+    """Обробляє вхідні оновлення від Telegram."""
+    try:
+        data = await request.json()
+        if perky_bot.application:
+            update = Update.de_json(data, perky_bot.application.bot)
+            await perky_bot.application.process_update(update)
+            return {"status": "ok"}
+        else:
+            logger.warning("Отримано вебхук, але бот ще не ініціалізований.")
+            return {"status": "bot not ready"}, 503
+    except Exception as e:
+        logger.error(f"Помилка обробки вебхука: {e}")
+        return {"status": "error"}
 
-# Підключення роутера з ендпоінтами з файлу api.py.
-# Всі шляхи, визначені в router, будуть доступні в нашому додатку.
-app.include_router(router)
+# --- ПІДКЛЮЧЕННЯ ІНШИХ ЧАСТИН ДОДАТКУ ---
 
-# Монтування статичних файлів (CSS, JS).
-# Це дозволить серверу віддавати файли з теки 'static' за шляхом '/static'.
-# Наприклад, файл static/style.css буде доступний за URL /static/style.css.
+# Підключення роутера з api.py для обробки /game, /save_stats і т.д.
+app.include_router(api_router)
+
+# Вказуємо, що тека 'static' містить статичні файли (css, js, html).
+# Це дозволить коректно завантажувати вашу гру.
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-if __name__ == "__main__":
-    # Ця частина виконується, тільки якщо файл запускається напряму (для локальної розробки).
-    uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=True)
+# --- ЗАПУСК ДОДАТКУ ---
+@app.on_event("startup")
+async def on_startup():
+    """Виконується один раз при запуску сервера."""
+    logger.info("Запуск налаштування Telegram-бота...")
+    await setup_bot()
+    logger.info("Налаштування бота завершено!")
 
