@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from telegram import Update
+from telegram.error import RetryAfter
+import asyncio
 
 # Імпортуємо роутер, конфігурацію та логіку бота
 from api import router as api_router
@@ -23,16 +25,22 @@ async def lifespan(app: FastAPI):
     Ідеальне місце для ініціалізації бота.
     """
     logger.info("Запуск додатка...")
-    # Ініціалізуємо додаток бота та всі його обробники
     await setup_bot_handlers()
-    # Встановлюємо вебхук
-    await perky_bot.application.bot.set_webhook(
-        url=perky_bot.webhook_url,
-        allowed_updates=["message", "callback_query"]
-    )
-    logger.info(f"Вебхук встановлено на: {perky_bot.webhook_url}")
+    
+    try:
+        await perky_bot.application.bot.set_webhook(
+            url=perky_bot.webhook_url,
+            allowed_updates=["message", "callback_query"]
+        )
+        logger.info(f"Вебхук встановлено на: {perky_bot.webhook_url}")
+    except RetryAfter as e:
+        logger.warning(f"Telegram flood control: чекаємо {e.retry_after} секунд. Вебхук, ймовірно, вже встановлено іншим процесом.")
+        await asyncio.sleep(e.retry_after)
+    except Exception as e:
+        logger.error(f"Не вдалося встановити вебхук: {e}")
+
     yield
-    # Цей код виконається при зупинці сервера
+    
     logger.info("Зупинка додатка...")
     await perky_bot.application.bot.delete_webhook()
     logger.info("Вебхук видалено.")
@@ -54,21 +62,16 @@ async def telegram_webhook(request: Request):
     Основний вебхук для отримання оновлень від Telegram.
     """
     try:
-        # Перевіряємо, чи бот ініціалізований
         if not perky_bot.application:
             logger.error("Спроба обробити вебхук до ініціалізації бота.")
             raise HTTPException(status_code=500, detail="Бот не ініціалізований")
             
-        # Декодуємо запит та створюємо об'єкт Update
         json_data = await request.json()
         update = Update.de_json(json_data, perky_bot.application.bot)
         
-        # Передаємо оновлення для обробки
         await perky_bot.application.process_update(update)
         
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Помилка обробки вебхука: {e}")
-        # Повертаємо успішний статус, щоб Telegram не намагався повторно надіслати запит
         return {"status": "error handled"}
-
