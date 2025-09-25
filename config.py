@@ -1,39 +1,36 @@
-# config.py: Конфігураційні змінні.
-# Містить усі налаштування, токени та константи для проєкту.
-
 import os
-import logging
 from dotenv import load_dotenv
 
-# Завантажуємо змінні з файлу .env (для локальної розробки)
+# Завантажуємо змінні з .env файлу (для локальної розробки)
 load_dotenv()
 
-# Налаштування логування
-logger = logging.getLogger(__name__)
+# --- Ключові налаштування ---
 
-# --- Основні налаштування ---
+# Токен вашого Telegram-бота. 
+# Тепер він БЕРЕТЬСЯ ТІЛЬКИ зі змінних середовища.
+BOT_TOKEN = os.getenv('BOT_TOKEN')
 
-# Токен вашого Telegram-бота. Береться зі змінних середовища.
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+# URL, на якому працює ваш додаток.
+WEBAPP_URL = os.getenv('WEBAPP_URL')
 
-# Публічна URL-адреса вашого додатку на Railway.
-WEBAPP_URL = os.getenv("WEBAPP_URL", "http://localhost:8000")
+# Порт для запуску Uvicorn
+PORT = int(os.getenv('PORT', 8000))
 
-# Порт, на якому буде працювати сервер. Railway надає його автоматично.
-PORT = int(os.getenv("PORT", 8000))
-
-# --- Валідація змінних ---
-# Перевіряємо, чи задано токен, інакше виводимо помилку.
+# --- Перевірка наявності змінних ---
+# Якщо токен або URL не знайдено, програма не запуститься. Це безпечно.
 if not BOT_TOKEN:
-    logger.error("Помилка: не знайдено змінну середовища BOT_TOKEN!")
-    # У реальному застосунку тут можна було б завершити роботу
-    # raise ValueError("Необхідно встановити BOT_TOKEN")
+    raise ValueError("Не знайдено BOT_TOKEN. Додайте його в змінні середовища вашого сервера (напр. Railway).")
+if not WEBAPP_URL:
+    raise ValueError("Не знайдено WEBAPP_URL. Додайте його в змінні середовища.")
 
-# --- Очищення та підготовка URL ---
-# Гарантуємо, що WEBAPP_URL не містить зайвих слешів у кінці.
-# Це важливо для коректної побудови посилань.
+
+# --- Автоматичне очищення URL ---
+# Базовий URL для вебхука (без /game)
 BASE_WEBAPP_URL = WEBAPP_URL.rstrip('/').replace('/game', '')
 
-# --- Налаштування бази даних ---
-DATABASE_NAME = "perky_jump.db"
+# Повний URL для самої гри
+GAME_URL = f"{BASE_WEBAPP_URL}/game"
+
+# URL для встановлення вебхука
+WEBHOOK_URL = f"{BASE_WEBAPP_URL}/{BOT_TOKEN}"
 
