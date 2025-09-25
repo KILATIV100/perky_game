@@ -202,3 +202,4 @@ async def setup_bot_handlers():
     Ця функція тепер викликається один раз при старті сервера.
     """
     await perky_bot.initialize()
+
