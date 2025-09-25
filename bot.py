@@ -16,7 +16,19 @@ class PerkyCoffeeBot:
     """Клас, що інкапсулює всю логіку Telegram-бота."""
     
     def __init__(self):
+        # Ініціалізуємо основні компоненти як None
         self.application: Application = None
+        self.webhook_url: str = WEBHOOK_URL
+
+    async def initialize(self):
+        """Створює екземпляр Application та налаштовує його."""
+        logger.info("Ініціалізація додатку Telegram-бота...")
+        self.application = Application.builder().token(BOT_TOKEN).build()
+
+        # Додаємо обробники команд та кнопок
+        self.application.add_handler(CommandHandler("start", self.start))
+        self.application.add_handler(CallbackQueryHandler(self.button_callback))
+        logger.info("Обробники команд додано.")
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обробник команди /start."""
@@ -184,33 +196,9 @@ class PerkyCoffeeBot:
 # Створюємо єдиний екземпляр класу для всього додатку
 perky_bot = PerkyCoffeeBot()
 
-async def setup_bot():
+async def setup_bot_handlers():
     """
-    Налаштовує та ініціалізує Telegram-бота, встановлює вебхук.
-    Додано обробку помилки Flood control.
+    Ініціалізує додаток бота та налаштовує обробники.
+    Ця функція тепер викликається один раз при старті сервера.
     """
-    logger.info("Запуск налаштування Telegram-бота...")
-    perky_bot.application = Application.builder().token(BOT_TOKEN).build()
-
-    # Додаємо обробники команд та кнопок
-    perky_bot.application.add_handler(CommandHandler("start", perky_bot.start))
-    perky_bot.application.add_handler(CallbackQueryHandler(perky_bot.button_callback))
-    
-    # Встановлюємо вебхук з обробкою помилки RetryAfter
-    try:
-        await perky_bot.application.bot.set_webhook(
-            url=WEBHOOK_URL,
-            allowed_updates=["message", "callback_query"]
-        )
-        logger.info(f"Вебхук встановлено на: {WEBHOOK_URL}")
-    except RetryAfter as e:
-        logger.warning(f"Telegram flood control: чекаємо {e.retry_after} секунд перед повторною спробою.")
-        await asyncio.sleep(e.retry_after)
-        await perky_bot.application.bot.set_webhook(
-            url=WEBHOOK_URL,
-            allowed_updates=["message", "callback_query"]
-        )
-        logger.info(f"Вебхук успішно встановлено після очікування.")
-    except Exception as e:
-        logger.error(f"Не вдалося встановити вебхук: {e}")
-        raise
+    await perky_bot.initialize()
