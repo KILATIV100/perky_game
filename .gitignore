@@ -2,18 +2,15 @@
 *.db
 *.sqlite3
 
-Віртуальне оточення Python
-/venv/
-/.venv/
-env/
-.env
-
 Кеш Python
 pycache/
 *.py[cod]
 *$py.class
 
-Файли IDE
+Файли середовища (тут зберігаються секрети)
+.env
+.env.*
+
+Специфічні файли IDE
 .vscode/
 .idea/
-
