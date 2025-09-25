@@ -71,3 +71,4 @@ async def telegram_webhook(request: Request):
         logger.error(f"Помилка обробки вебхука: {e}")
         # Повертаємо успішний статус, щоб Telegram не намагався повторно надіслати запит
         return {"status": "error handled"}
+
