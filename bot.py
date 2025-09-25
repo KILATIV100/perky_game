@@ -1,137 +1,154 @@
-# bot.py: Вся логіка, пов'язана з Telegram-ботом.
+# bot.py: Вся логіка, що стосується Telegram-бота.
+# Включає обробники команд, кнопок та налаштування вебхука.
 
-from datetime import datetime
+import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import ContextTypes, Application, CommandHandler, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from telegram.constants import ParseMode
-import config
-from database import Database
+
+from config import BOT_TOKEN, WEBAPP_URL, SHOP_ITEMS
+from database import db
+
+# Налаштування логера
+logger = logging.getLogger(__name__)
 
 class PerkyCoffeeBot:
-    """Клас, що інкапсулює логіку Telegram-бота."""
-    def __init__(self, database: Database):
-        self.db = database
-        self.application: Application = None
-
-    async def setup(self):
-        """Ініціалізація додатка бота."""
-        self.application = Application.builder().token(config.BOT_TOKEN).build()
-
-    async def set_webhook(self):
-        """Встановлення вебхука для бота."""
-        webhook_url = f"{config.WEBAPP_URL}/{config.BOT_TOKEN}"
-        await self.application.bot.set_webhook(webhook_url)
+    def __init__(self):
+        # application буде ініціалізовано в setup_bot
+        self.application: Application | None = None
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обробник команди /start."""
+        """Обробка команди /start"""
         user = update.effective_user
-        self.db.save_user(user.id, user.username, user.first_name)
-
-        welcome_message = f"Привіт, {user.first_name}! 👋\n\nЛаскаво просимо до 🤖☕ **Perky Coffee Jump**!\n\nСтрибай, збирай зерна та став рекорди!"
-        await update.message.reply_text(welcome_message, reply_markup=self._main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN)
+        db.save_user(user.id, user.username, user.first_name)
+        
+        welcome_message = f"Привіт, {user.first_name}! 👋\n\nЯ - Perky Coffee Jump Bot! 🤖☕\n\nГотовий до гри? Просто натисни на кнопку нижче! 👇"
+        
+        keyboard = [
+            [InlineKeyboardButton("🎮 Почати гру", web_app=WebAppInfo(url=f"{WEBAPP_URL}/game"))],
+            [
+                InlineKeyboardButton("📊 Статистика", callback_data='stats'),
+                InlineKeyboardButton("🏆 Таблиця лідерів", callback_data='leaderboard')
+            ],
+            [
+                InlineKeyboardButton("🛒 Магазин", callback_data='shop'),
+                InlineKeyboardButton("❓ Допомога", callback_data='help')
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(welcome_message, reply_markup=reply_markup)
 
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обробник натискань на inline-кнопки."""
+        """Обробка натискань кнопок"""
         query = update.callback_query
         await query.answer()
 
-        action_map = {
-            'stats': self.show_stats,
-            'leaderboard': self.show_leaderboard,
-            'shop': self.show_shop,
-            'help': self.show_help,
-            'back_main': self.back_to_main
-        }
-
-        if query.data in action_map:
-            await action_map[query.data](query)
+        if query.data == 'stats':
+            await self.show_stats(query)
+        elif query.data == 'leaderboard':
+            await self.show_leaderboard(query)
+        elif query.data == 'shop':
+            await self.show_shop(query)
+        elif query.data == 'help':
+            await self.show_help(query)
+        elif query.data == 'back_main':
+            await self.back_to_main(query)
         elif query.data.startswith('buy_'):
             item_id = query.data.replace('buy_', '')
             await self.buy_item(query, item_id)
 
-    async def show_stats(self, query):
-        """Показує статистику гравця."""
+    async def show_stats(self, query: Update):
+        """Показує статистику користувача."""
         user_id = query.from_user.id
-        stats = self.db.get_user_stats(user_id)
-
-        if not stats or stats['games_played'] == 0:
-            stats_text = "📊 **Твоя статистика**\n\nТи ще не грав. Час почати! 🚀"
+        stats = db.get_user_stats(user_id)
+        
+        if not stats or stats.get('games_played', 0) == 0:
+            stats_text = "📊 Ваша статистика порожня. Час зіграти першу гру!"
         else:
-            last_played_str = datetime.fromisoformat(stats['last_played']).strftime("%d.%m.%Y %H:%M") if stats['last_played'] else 'Ніколи'
             stats_text = (
-                f"📊 **Твоя статистика**\n\n"
-                f"🎮 Ігор зіграно: *{stats['games_played']}*\n"
-                f"🏔️ Рекорд висоти: *{stats['max_height']} м*\n"
-                f"☕ Усього зерен: *{stats['total_beans']}*\n"
-                f"📅 Остання гра: *{last_played_str}*"
+                f"📊 **Ваша статистика:**\n"
+                f"🏆 Рекорд: **{stats['max_height']}** м\n"
+                f"☕ Зібрано зерен: **{stats['total_beans']}**\n"
+                f"🕹️ Зіграно ігор: **{stats['games_played']}**"
             )
-        await query.edit_message_text(stats_text, reply_markup=self._back_keyboard('back_main'), parse_mode=ParseMode.MARKDOWN)
-
-    async def show_leaderboard(self, query):
-        """Показує таблицю лідерів."""
-        leaderboard = self.db.get_leaderboard(10)
-        leaderboard_text = "🏆 **Таблиця лідерів**\n\n"
-        if not leaderboard:
-            leaderboard_text += "Поки що немає рекордів. Стань першим!"
-        else:
-            for i, (username, first_name, max_height, total_beans) in enumerate(leaderboard, 1):
-                name = first_name or username or "Гравець"
-                emoji = ["🥇", "🥈", "🥉"][i-1] if i <= 3 else f"{i}."
-                leaderboard_text += f"{emoji} *{name}* - {max_height} м\n"
-        await query.edit_message_text(leaderboard_text, reply_markup=self._back_keyboard('back_main'), parse_mode=ParseMode.MARKDOWN)
-
-    async def show_shop(self, query):
-        """Показує магазин."""
-        shop_text = "🛒 **Магазин Perky Coffee**\n\nКупуй ексклюзивний мерч та підтримай розробку гри!"
-        keyboard_buttons = [
-            [InlineKeyboardButton(f"{item['name']} - {item['price']//100} грн", callback_data=f'buy_{item_id}')]
-            for item_id, item in config.SHOP_ITEMS.items()
+        
+        keyboard = [
+            [InlineKeyboardButton("🏆 Таблиця лідерів", callback_data='leaderboard')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='back_main')]
         ]
-        keyboard_buttons.append([InlineKeyboardButton("↩️ Назад", callback_data='back_main')])
-        await query.edit_message_text(shop_text, reply_markup=InlineKeyboardMarkup(keyboard_buttons))
+        await query.edit_message_text(stats_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
 
-    async def buy_item(self, query, item_id: str):
-        """Обробляє покупку товару."""
-        item = config.SHOP_ITEMS.get(item_id)
-        if not item:
-            await query.answer("Товар не знайдено!", show_alert=True)
-            return
-        await query.edit_message_text(
-            f"Ви обрали: *{item['name']}*\n\n{item['description']}\n\nЦіна: *{item['price']//100} грн*\n\n_(Функція оплати у розробці)_",
-            reply_markup=self._back_keyboard('shop'), parse_mode=ParseMode.MARKDOWN
-        )
+    async def show_leaderboard(self, query: Update):
+        """Показує таблицю лідерів."""
+        leaderboard = db.get_leaderboard()
+        
+        if not leaderboard:
+            leaderboard_text = "🏆 Таблиця лідерів порожня. Будьте першим!"
+        else:
+            leaderboard_text = "🏆 **Топ-10 гравців:**\n\n"
+            for i, (username, first_name, max_height, _) in enumerate(leaderboard, 1):
+                name = first_name or username or "Анонім"
+                emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+                leaderboard_text += f"{emoji} {name} - **{max_height}** м\n"
 
-    async def show_help(self, query):
-        """Показує довідку по грі."""
-        help_text = (
-            "❓ **Допомога по грі**\n\n"
-            "🎮 *Керування:*\nНатискай на екран або використовуй стрілки для переміщення.\n\n"
-            "🎯 *Мета:*\nСтрибай якомога вище, збирай кавові зерна ☕ і не падай!\n\n"
-            "Успіхів! 🚀"
-        )
-        await query.edit_message_text(help_text, reply_markup=self._back_keyboard('back_main'), parse_mode=ParseMode.MARKDOWN)
+        keyboard = [[InlineKeyboardButton("↩️ Назад до статистики", callback_data='stats')]]
+        await query.edit_message_text(leaderboard_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
+        
+    async def show_shop(self, query: Update):
+        """Показує магазин."""
+        shop_text = "🛒 **Магазин мерчу**\n\nОберіть товар:"
+        keyboard = []
+        for item_id, item in SHOP_ITEMS.items():
+            price_grn = item['price'] // 100
+            keyboard.append([InlineKeyboardButton(f"{item['name']} - {price_grn} грн", callback_data=f'buy_{item_id}')])
+        keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='back_main')])
+        await query.edit_message_text(shop_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
 
-    async def back_to_main(self, query):
-        """Повертає користувача в головне меню."""
+    async def show_help(self, query: Update):
+        """Показує допомогу."""
+        help_text = "❓ **Допомога**\n\nСтрибайте якомога вище, збирайте зерна та не падайте!"
+        keyboard = [[InlineKeyboardButton("↩️ Назад", callback_data='back_main')]]
+        await query.edit_message_text(help_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN)
+
+    async def back_to_main(self, query: Update):
+        """Повертає користувача до головного меню."""
         user = query.from_user
-        welcome_message = f"Привіт, {user.first_name}! 👋\n\nГотовий до нових рекордів у **Perky Coffee Jump**? 🤖☕"
-        await query.edit_message_text(welcome_message, reply_markup=self._main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN)
+        welcome_message = f"Привіт, {user.first_name}! 👋\n\nГотовий до гри? Просто натисни на кнопку нижче! 👇"
+        keyboard = [
+            [InlineKeyboardButton("🎮 Почати гру", web_app=WebAppInfo(url=f"{WEBAPP_URL}/game"))],
+            [
+                InlineKeyboardButton("📊 Статистика", callback_data='stats'),
+                InlineKeyboardButton("🏆 Таблиця лідерів", callback_data='leaderboard')
+            ],
+            [
+                InlineKeyboardButton("🛒 Магазин", callback_data='shop'),
+                InlineKeyboardButton("❓ Допомога", callback_data='help')
+            ]
+        ]
+        await query.edit_message_text(welcome_message, reply_markup=InlineKeyboardMarkup(keyboard))
 
-    def _main_menu_keyboard(self):
-        """Генерує клавіатуру головного меню."""
-        return InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎮 Почати гру", web_app=WebAppInfo(url=f"{config.WEBAPP_URL}/static/index.html"))],
-            [InlineKeyboardButton("📊 Статистика", callback_data='stats'), InlineKeyboardButton("🏆 Лідери", callback_data='leaderboard')],
-            [InlineKeyboardButton("🛒 Магазин", callback_data='shop'), InlineKeyboardButton("❓ Допомога", callback_data='help')]
-        ])
+# Створюємо єдиний екземпляр класу бота, який будемо використовувати у всьому додатку.
+perky_bot = PerkyCoffeeBot()
 
-    def _back_keyboard(self, callback_data: str):
-        """Генерує клавіатуру з кнопкою "Назад"."""
-        return InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data=callback_data)]])
+async def setup_bot():
+    """
+    Ініціалізує та налаштовує екземпляр Telegram-бота.
+    Ця функція створює об'єкт Application, додає до нього обробники
+    команд та встановлює вебхук, щоб Telegram міг надсилати оновлення.
+    """
+    # Ініціалізація Application з токеном
+    application = Application.builder().token(BOT_TOKEN).build()
+    
+    # Додавання обробників
+    application.add_handler(CommandHandler("start", perky_bot.start))
+    application.add_handler(CallbackQueryHandler(perky_bot.button_callback))
 
-def setup_bot_handlers(bot_instance: PerkyCoffeeBot):
-    """Реєструє обробники команд для бота."""
-    application = bot_instance.application
-    application.add_handler(CommandHandler("start", bot_instance.start))
-    application.add_handler(CallbackQueryHandler(bot_instance.button_callback))
+    # Зберігаємо application в екземплярі нашого бота для доступу з інших частин коду
+    perky_bot.application = application
+
+    # Встановлення вебхука
+    webhook_url = f"{WEBAPP_URL}/{BOT_TOKEN}"
+    await application.bot.set_webhook(webhook_url)
+    logger.info(f"Вебхук встановлено на: {webhook_url}")
 
