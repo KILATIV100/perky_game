@@ -131,19 +131,17 @@ canvas {
     padding: 5px;
     margin-bottom: 15px;
     
-    /* --- ВИПРАВЛЕННЯ ЧИТАБЕЛЬНОСТІ --- */
-    overflow-x: auto; /* ДОДАНО: Дозволяє горизонтальне прокручування */
-    -webkit-overflow-scrolling: touch; /* Покращення скролу на iOS */
-    white-space: nowrap; /* ДОДАНО: Запобігає переносу елементів на новий рядок */
-    justify-content: flex-start; /* Вирівнювання на початок */
+    /* --- ВИПРАВЛЕННЯ ДЛЯ 3 ВКЛАДОК --- */
+    overflow-x: hidden; /* Скрол більше не потрібен */
+    justify-content: space-between; /* Рівномірний розподіл */
     /* ---------------------------------- */
 }
 
 .menu-tab {
-    flex: 0 0 auto; /* ОНОВЛЕНО: Запобігає стисканню */
-    min-width: 80px; /* ДОДАНО: Мінімальна ширина для читабельності */
-    padding: 8px 12px; 
-    margin-right: 5px; /* ДОДАНО: Невеликий відступ між вкладками */
+    flex: 1; /* Рівномірно розподіляємо місце */
+    min-width: 0; /* Видаляємо min-width, оскільки flex:1 все вирівняє */
+    padding: 8px 5px; /* Зменшення відступів, щоб вмістити довгі назви */
+    margin-right: 0; 
     border: none;
     background: transparent;
     color: rgba(255,255,255,0.7);
@@ -153,6 +151,7 @@ canvas {
     font-weight: bold;
     transition: background 0.3s;
     text-align: center;
+    white-space: normal; /* Дозволяємо перенос тексту, якщо назва занадто довга */
 }
 .menu-tab.active {
     background: rgba(255,255,255,0.2);
@@ -202,6 +201,7 @@ canvas {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin-top: 10px;
 }
 .stats-grid div span {
     font-weight: bold;
@@ -244,7 +244,7 @@ canvas {
 }
 
 .scrollable-content {
-    max-height: 50vh;
+    max-height: 25vh; /* Зменшено висоту скролу для вміщення всіх секцій на вкладці "Гра" */
     overflow-y: auto;
     padding-right: 5px;
 }
