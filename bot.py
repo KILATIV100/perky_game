@@ -77,7 +77,7 @@ class PerkyCoffeeBot:
                 f"🏆 <b>Рекорд висоти:</b> {stats['max_height']} м\n"
                 f"☕ <b>Всього зерен:</b> {stats['total_beans']}\n"
                 f"🕹️ <b>Зіграно ігор:</b> {stats['games_played']} \n"
-                f"🤖 <b>Активний скін:</b> {stats.get('active_skin', 'default')}"
+                f"🤖 <b>Активний скін:</b> {stats.get('active_skin', 'default')}" # ОНОВЛЕНО
             )
 
         keyboard = [[InlineKeyboardButton("↩️ Назад", callback_data='back_main')]]
@@ -105,7 +105,7 @@ class PerkyCoffeeBot:
         
     async def show_shop(self, query: Update):
         """Показує магазин."""
-        shop_text = "🛒 <b>Магазин мерчу:</b>\n\nТут ви можете придбати нові скіни за зібрані кавові зерна!"
+        shop_text = "🛒 <b>Магазин мерчу:</b>\n\nТут ви можете придбати нові скіни за зібрані кавові зерна!" # ОНОВЛЕНО
         keyboard = [[InlineKeyboardButton("↩️ Назад", callback_data='back_main')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(shop_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
