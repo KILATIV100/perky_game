@@ -5,18 +5,12 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 from telegram.constants import ParseMode
 from telegram.error import RetryAfter
 
-# kilativ100/perky_game/perky_game-main/bot.py (фрагмент)
-
-import logging
-# ...
-from telegram.error import RetryAfter
-
 # Імпортуємо конфігурацію та базу даних
-# ОНОВЛЕНО: Імпортуємо WEBHOOK_URL
-from config import BOT_TOKEN, WEBAPP_URL, WEBHOOK_URL
+from config import BOT_TOKEN, WEBAPP_URL, WEBHOOK_URL # ОНОВЛЕНО: Додано WEBHOOK_URL
 from database import db
 
-# ...
+# Налаштування логера
+logger = logging.getLogger(__name__)
 
 class PerkyCoffeeBot:
     """
@@ -25,9 +19,7 @@ class PerkyCoffeeBot:
     def __init__(self):
         self.application = None
         # ВИПРАВЛЕНО: Використовуємо коректний WEBHOOK_URL
-        self.webhook_url = WEBHOOK_URL
-        
-# ... (решта файлу без змін)
+        self.webhook_url = WEBHOOK_URL 
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обробка команди /start."""
@@ -84,7 +76,8 @@ class PerkyCoffeeBot:
                 f"📊 <b>Ваша статистика:</b>\n\n"
                 f"🏆 <b>Рекорд висоти:</b> {stats['max_height']} м\n"
                 f"☕ <b>Всього зерен:</b> {stats['total_beans']}\n"
-                f"🕹️ <b>Зіграно ігор:</b> {stats['games_played']}"
+                f"🕹️ <b>Зіграно ігор:</b> {stats['games_played']} \n"
+                f"🤖 <b>Активний скін:</b> {stats.get('active_skin', 'default')}"
             )
 
         keyboard = [[InlineKeyboardButton("↩️ Назад", callback_data='back_main')]]
@@ -112,7 +105,7 @@ class PerkyCoffeeBot:
         
     async def show_shop(self, query: Update):
         """Показує магазин."""
-        shop_text = "🛒 <b>Магазин мерчу:</b>\n\nНезабаром тут з'являться товари!"
+        shop_text = "🛒 <b>Магазин мерчу:</b>\n\nТут ви можете придбати нові скіни за зібрані кавові зерна!"
         keyboard = [[InlineKeyboardButton("↩️ Назад", callback_data='back_main')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(shop_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
