@@ -26,12 +26,30 @@ const tabContents = {
     settings: document.getElementById('settingsTab')
 };
 
+
 // Глобальні змінні
 let gameState = 'menu';
-let player, platforms, coffees, particles, clouds, camera, bonusTimer;
-let currentHeight = 0, currentCoffeeCount = 0, gameMode = 'classic';
+let player, platforms, coffees, particles, clouds, camera, bonusTimer, gameTimer; // ДОДАНО gameTimer
+// ДОДАНО gameSpeedMultiplier для управління швидкістю гри
+let currentHeight = 0, currentCoffeeCount = 0, gameMode = 'classic', gameSpeedMultiplier = 1; 
 let animationId;
 let keys = {}, touchControls = { left: false, right: false }, gyroTilt = 0;
+
+// ...
+
+// ОНОВЛЕНО: Застосовуємо множник до руху гравця
+function updatePlayer() {
+    // ... (логіка вибору targetVx)
+    player.vx += (targetVx - player.vx) * 0.2; 
+    
+    // ЗАСТОСУВАННЯ МНОЖНИКА ШВИДКОСТІ
+    player.x += player.vx * gameSpeedMultiplier; 
+    player.vy += player.gravity; // Гравітація залишається
+    player.y += player.vy; 
+    
+    // ... (логіка зациклення екрану)
+}
+
 
 // Статистика гравця
 let playerStats = {
