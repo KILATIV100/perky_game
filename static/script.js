@@ -21,6 +21,7 @@ const pauseBtn = document.getElementById('pauseBtn');
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
+const loadingScreen = document.getElementById('loadingScreen'); // ДОДАНО
 const tabContents = {
     play: document.getElementById('playTab'),
     shop: document.getElementById('shopTab'), 
@@ -268,6 +269,7 @@ function render() {
         ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40);
     }
 }
+// ВИПРАВЛЕНО: Повернено визначення функції renderPlatforms
 function renderPlatforms() {
     platforms.forEach(p => {
         if (p.isBreaking) ctx.globalAlpha = 0.5;
@@ -859,7 +861,24 @@ function vibrate(duration) {
 async function initializeApp() {
     // --- ВИПРАВЛЕННЯ: РОЗГОРТАННЯ ЕКРАНА ---
     tg.ready();
-    await fetchAndUpdateStats(); 
+    
+    // Імітація мінімальної затримки для провантаження UI, навіть якщо API швидке
+    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 500)); // Мінімум 500 мс
+
+    // 1. Отримання даних користувача та оновлення статистики
+    let statsLoaded = false;
+    if (playerStats.user_id) {
+        try {
+            await fetchAndUpdateStats();
+            statsLoaded = true;
+        } catch (error) {
+            console.error("Не вдалося завантажити статистику:", error);
+        }
+    }
+    
+    // 2. Чекаємо мінімальної затримки
+    await minDelayPromise;
+    
     tg.expand();
     // ----------------------------------------
     
@@ -874,6 +893,14 @@ async function initializeApp() {
     // ОНОВЛЕНО: Завантаження контенту вкладки "Гра" при запуску
     updateStatsDisplayInMenu(); 
     loadLeaderboard(); 
+    
+    // 3. ПРИХОВУЄМО LOADER ТА ПОКАЗУЄМО МЕНЮ
+    if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+    }
+    if (menuScreen) {
+        menuScreen.style.display = 'flex';
+    }
 }
 
 initializeApp();
