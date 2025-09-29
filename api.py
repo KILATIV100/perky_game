@@ -12,6 +12,41 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/save_stats")
+# kilativ100/perky_game/perky_game-main/api.py (фрагмент)
+
+from fastapi import APIRouter, HTTPException
+# ...
+from models import GameStats, SkinAction # ДОДАМО SkinAction після створення в models.py
+
+# ... (існуючі ендпоінти /save_stats, /stats/{user_id}, /leaderboard без змін)
+
+@router.get("/skins/{user_id}")
+async def get_skins_endpoint(user_id: int):
+    """Ендпоінт для отримання всіх скінів та їх статусу для користувача."""
+    try:
+        skins = db.get_all_skins(user_id)
+        return {"success": True, "skins": skins}
+    except Exception as e:
+        logger.error(f"Помилка отримання скінів для user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Внутрішня помилка сервера при отриманні скінів.")
+
+@router.post("/skin_action")
+async def skin_action_endpoint(action: SkinAction):
+    """Ендпоінт для купівлі або активації скіна."""
+    if action.action_type == 'buy':
+        result = db.buy_skin(action.user_id, action.skin_id)
+    elif action.action_type == 'activate':
+        result = db.activate_skin(action.user_id, action.skin_id)
+    else:
+        raise HTTPException(status_code=400, detail="Невідомий тип дії.")
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message"))
+        
+    return result
+
+
+
 async def save_stats_endpoint(stats: GameStats):
     """Ендпоінт для збереження статистики гри."""
     try:
