@@ -5,12 +5,18 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 from telegram.constants import ParseMode
 from telegram.error import RetryAfter
 
+# kilativ100/perky_game/perky_game-main/bot.py (фрагмент)
+
+import logging
+# ...
+from telegram.error import RetryAfter
+
 # Імпортуємо конфігурацію та базу даних
-from config import BOT_TOKEN, WEBAPP_URL
+# ОНОВЛЕНО: Імпортуємо WEBHOOK_URL
+from config import BOT_TOKEN, WEBAPP_URL, WEBHOOK_URL
 from database import db
 
-# Налаштування логера
-logger = logging.getLogger(__name__)
+# ...
 
 class PerkyCoffeeBot:
     """
@@ -18,7 +24,10 @@ class PerkyCoffeeBot:
     """
     def __init__(self):
         self.application = None
-        self.webhook_url = f"{WEBAPP_URL}/{BOT_TOKEN}"
+        # ВИПРАВЛЕНО: Використовуємо коректний WEBHOOK_URL
+        self.webhook_url = WEBHOOK_URL
+        
+# ... (решта файлу без змін)
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обробка команди /start."""
