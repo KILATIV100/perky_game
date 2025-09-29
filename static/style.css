@@ -357,11 +357,22 @@ canvas {
     border-color: #FFD700; /* Золота рамка для активного скіна */
 }
 .skin-icon {
-    font-size: 1rem;
+    /* ОНОВЛЕНО: Стилі для контейнера зображення скіна */
+    height: 80px; 
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.shop-skin-img {
+    width: 60px; /* Розмір зображення скіна */
+    height: 60px;
+    object-fit: contain;
+}
+.skin-name-text {
+    font-size: 0.9rem;
     font-weight: bold;
-    margin-bottom: 10px;
-    height: 50px; /* Місце для майбутнього SVG скіна */
-    line-height: 50px;
+    margin-bottom: 5px;
 }
 .skin-btn {
     width: 100%;
