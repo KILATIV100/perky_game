@@ -20,10 +20,17 @@ const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
 const tabContents = {
     play: document.getElementById('playTab'),
-    // ВИДАЛЕНО: progress та social
     shop: document.getElementById('shopTab'), 
     settings: document.getElementById('settingsTab')
 };
+
+// --- ДОДАНО: Глобальні активи SVG ---
+const assets = {};
+assets.coffeeBean = new Image();
+assets.coffeeBean.src = '/static/coffee.svg'; // Шлях до зернятка
+const skinImages = {}; // Мапа для зберігання зображень скінів
+// ------------------------------------
+
 
 // Глобальні змінні
 let gameState = 'menu';
@@ -38,7 +45,7 @@ let playerStats = {
     username: tg.initDataUnsafe?.user?.username || 'Guest',
     first_name: tg.initDataUnsafe?.user?.first_name || 'Player',
     max_height: 0, total_beans: 0, games_played: 0,
-    active_skin: 'default'
+    active_skin: 'default_robot.svg' // ОНОВЛЕНО: Використовуємо ім'я файлу
 };
 
 // Налаштування гри
@@ -201,19 +208,29 @@ function render() {
     }
 }
 function renderPlayer() {
+    const skinName = playerStats.active_skin; // напр., 'default_robot.svg'
+    const skinImg = skinImages[skinName];
+
+    // 1. Спроба рендерингу SVG-скіна
+    if (skinImg && skinImg.complete) {
+        ctx.drawImage(skinImg, player.x, player.y, player.width, player.height);
+        return; // SVG відрендерено, виходимо
+    }
+
+    // 2. Якщо SVG не завантажено, використовуємо тимчасову заглушку на основі імені файлу
     let color = '#8B4513'; // Default Robot
     let eyeColor = '#FFD700';
-
-    // ОНОВЛЕНО: Логіка відображення скінів
-    if (playerStats.active_skin === 'red_hot') {
-        color = '#E74C3C';
+    
+    if (skinName.includes('skin_1.svg')) { // Наприклад, Скін #1
+        color = '#E74C3C'; // Red Hot
         eyeColor = '#333';
-    } else if (playerStats.active_skin === 'blue_ice') {
-        color = '#3498DB';
+    } else if (skinName.includes('skin_2.svg')) { // Наприклад, Скін #2
+        color = '#3498DB'; // Blue Ice
         eyeColor = '#fff';
     } 
-    // Тут може бути додаткова логіка для SVG, якщо є
+    // ... (тут можна додати більше логіки для інших скінів)
 
+    // Рендеринг квадрата як заглушки
     ctx.fillStyle = color;
     ctx.fillRect(player.x, player.y, player.width, player.height);
     
@@ -221,20 +238,22 @@ function renderPlayer() {
     ctx.fillRect(player.x + 5, player.y + 8, 5, 5);
     ctx.fillRect(player.x + 20, player.y + 8, 5, 5);
 }
-function renderPlatforms() {
-    platforms.forEach(p => {
-        if (p.isBreaking) ctx.globalAlpha = 0.5;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, p.width, p.height);
-        ctx.globalAlpha = 1.0;
-    });
-}
+
 function renderCoffees() {
-    ctx.fillStyle = '#D2691E';
+    // --- ОНОВЛЕНО: Рендеринг SVG зернятка ---
+    const coffeeImg = assets.coffeeBean;
+    
     coffees.forEach(c => {
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 5, 0, Math.PI * 2);
-        ctx.fill();
+        if (coffeeImg.complete) {
+            // Відображаємо SVG зернятко (розмір 15x15)
+            ctx.drawImage(coffeeImg, c.x - 7.5, c.y - 7.5, 15, 15);
+        } else {
+            // Заглушка (коло)
+            ctx.fillStyle = '#D2691E';
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
     });
 }
 function renderClouds() {
@@ -537,7 +556,7 @@ function updateStatsDisplayInMenu() {
         <div>🏆 Рекорд: <span>${playerStats.max_height}м</span></div>
         <div>☕ Всього зерен: <span>${playerStats.total_beans}</span></div>
         <div>🎮 Ігор зіграно: <span>${playerStats.games_played}</span></div>
-        <div>🤖 Активний скін: <span>${playerStats.active_skin || 'default'}</span></div>`;
+        <div>🤖 Активний скін: <span>${playerStats.active_skin.replace('.svg', '') || 'default'}</span></div>`;
 }
 async function loadLeaderboard() {
     const content = document.getElementById('leaderboardContent');
@@ -572,21 +591,27 @@ async function loadShop() {
         const response = await fetch(`/skins/${playerStats.user_id}`);
         const data = await response.json();
         
+        // Попереднє завантаження скінів у кеш (для renderPlayer)
+        data.skins.forEach(skin => {
+            if (!skinImages[skin.svg_data]) {
+                const img = new Image();
+                img.src = `/static/${skin.svg_data}`;
+                skinImages[skin.svg_data] = img;
+            }
+        });
+        
         if (data.success && data.skins.length > 0) {
             shopContent.innerHTML = `
                 <p class="beans-balance">Ваш баланс: ☕ <span id="userTotalBeans">${playerStats.total_beans}</span></p>
                 <div class="shop-grid">
                     ${data.skins.map(skin => {
-                        // is_owned === True, якщо скін куплено або він дефолтний
                         const is_owned = skin.is_owned || skin.is_default; 
-                        // is_active === True, якщо скін є активним
                         const is_active = skin.is_active; 
 
                         let button_html = '';
                         if (is_active) {
                             button_html = '<button class="skin-btn active">АКТИВНИЙ</button>';
                         } else if (is_owned) {
-                            // Кнопка АКТИВУВАТИ тільки для куплених/дефолтних, але неактивних
                             button_html = `<button class="skin-btn activate-btn" data-id="${skin.id}" data-action="activate">АКТИВУВАТИ</button>`;
                         } else {
                             button_html = `<button class="skin-btn buy-btn" data-id="${skin.id}" data-action="buy">КУПИТИ за ☕ ${skin.price}</button>`;
