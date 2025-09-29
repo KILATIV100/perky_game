@@ -28,6 +28,13 @@ const tabContents = {
     settings: document.getElementById('settingsTab')
 };
 
+// --- ДОДАНО: ЕЛЕМЕНТИ ЕКРАНУ ПАУЗИ ---
+const pauseScreen = document.getElementById('pauseScreen');
+const resumeBtn = document.getElementById('resumeBtn');
+const exitBtn = document.getElementById('exitBtn');
+// ------------------------------------
+
+
 // --- Глобальні активи SVG ---
 const assets = {};
 assets.coffeeBean = new Image();
@@ -282,13 +289,10 @@ function renderPlayer() {
     const skinImg = skinImages[skinName];
     const x = player.x;
     const y = player.y;
-    const w = player.width;
-    const h = player.height;
+    const w = player.width; // 60px
+    const h = player.height; // 60px
 
     // 1. Спроба рендерингу SVG-скіна
-    // ВИПРАВЛЕНО: Вимкнення згладжування для SVG
-    ctx.imageSmoothingEnabled = false; 
-    
     if (skinImg && skinImg.complete) {
         ctx.drawImage(skinImg, x, y, w, h);
         return; 
@@ -310,9 +314,10 @@ function renderPlayer() {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
     
+    // Очі
     ctx.fillStyle = eyeColor;
-    ctx.fillRect(x + 5, y + 8, 5, 5);
-    ctx.fillRect(x + 20, y + 8, 5, 5);
+    ctx.fillRect(x + 15, y + 15, 10, 10);
+    ctx.fillRect(x + 35, y + 15, 10, 10);
 }
 
 function renderCoffees() {
@@ -333,7 +338,7 @@ function renderCoffees() {
 }
 function renderEnemies() {
     enemies.forEach(e => {
-        const img = (e.type === 'virus') ? assets.enemyVirus : assets.bugImage;
+        const img = (e.type === 'virus') ? assets.enemyVirus : assets.enemyBug;
         if (img.complete) {
             ctx.drawImage(img, e.x, e.y, e.width, e.height);
         } else {
@@ -641,7 +646,6 @@ function exitToMenu() {
     menuScreen.style.display = 'flex';
 }
 
-
 function setupEventListeners() {
     // Обробники клавіш та дотиків без змін
     window.addEventListener('keydown', e => keys[e.code] = true);
@@ -668,15 +672,15 @@ function setupEventListeners() {
         menuScreen.style.display = 'flex';
     });
     
-    // --- ДОДАНО: ОБРОБНИКИ КНОПОК ПАУЗИ ---
+    // --- ДОДАНО: ОБРОБНИК КНОПКИ ПАУЗИ ---
     if (pauseBtn) {
         pauseBtn.addEventListener('click', pauseGame);
     }
     if (resumeBtn) {
-        resumeBtn.addEventListener('click', resumeGame);
+        resumeBtn.addEventListener('click', resumeGame); // ПІДКЛЮЧЕННЯ
     }
     if (exitBtn) {
-        exitBtn.addEventListener('click', exitToMenu);
+        exitBtn.addEventListener('click', exitToMenu); // ПІДКЛЮЧЕННЯ
     }
     // ------------------------------------
 
