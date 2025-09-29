@@ -1,5 +1,7 @@
 // Ініціалізація Telegram WebApp
 const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
 
 // DOM-елементи
 const canvas = document.getElementById('gameCanvas');
@@ -15,12 +17,14 @@ const rightBtn = document.getElementById('rightBtn');
 const restartBtn = document.getElementById('restartBtn');
 const menuBtn = document.getElementById('menuBtn');
 const gyroToggle = document.getElementById('gyroToggle');
-const soundToggle = document.getElementById('soundToggle'); 
-const vibrationToggle = document.getElementById('vibrationToggle'); 
-const pauseBtn = document.getElementById('pauseBtn'); 
+const soundToggle = document.getElementById('soundToggle'); // ДОДАНО
+const vibrationToggle = document.getElementById('vibrationToggle'); // ДОДАНО
+const pauseBtn = document.getElementById('pauseBtn'); // ДОДАНО
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
+
+// ВИПРАВЛЕНО: Використовуємо 3-вкладочну структуру DOM
 const tabContents = {
     play: document.getElementById('playTab'),
     shop: document.getElementById('shopTab'), 
@@ -41,12 +45,11 @@ const skinImages = {}; // Мапа для зберігання зображен�
 
 // Глобальні змінні
 let gameState = 'menu';
-let player, platforms, coffees, particles, clouds, camera, bonusTimer, gameTimer, enemies; 
-let currentHeight = 0, currentCoffeeCount = 0, gameMode = 'classic', gameSpeedMultiplier = 1; 
+let player, platforms, coffees, particles, clouds, camera, bonusTimer, gameTimer, enemies; // ДОДАНО ENEMIES, gameTimer
+let currentHeight = 0, currentCoffeeCount = 0, gameMode = 'classic', gameSpeedMultiplier = 1; // ДОДАНО gameSpeedMultiplier
 let animationId;
 let keys = {}, touchControls = { left: false, right: false }, gyroTilt = 0;
 let INITIAL_PLAYER_Y; // ДОДАНО: Для коректного розрахунку висоти
-
 
 // Статистика гравця
 let playerStats = {
@@ -54,11 +57,12 @@ let playerStats = {
     username: tg.initDataUnsafe?.user?.username || 'Guest',
     first_name: tg.initDataUnsafe?.user?.first_name || 'Player',
     max_height: 0, total_beans: 0, games_played: 0,
-    active_skin: 'default_robot.svg'
+    active_skin: 'default_robot.svg' // ВИПРАВЛЕНО: Додано активний скін
 };
 
 // Налаштування гри
 let gameSettings = { gyro: true, gyroSensitivity: 25, sound: true, vibration: true };
+
 
 // --- ІНІЦІАЛІЗАЦІЯ ---
 function resizeCanvas() {
@@ -89,7 +93,7 @@ function handleOrientation(event) {
 function updateGyroToggleUI() {
     gyroToggle.classList.toggle('active', gameSettings.gyro);
 }
-
+// ДОДАНО: Логіка для нових налаштувань
 function updateSoundToggleUI() {
     if (soundToggle) soundToggle.classList.toggle('active', gameSettings.sound);
 }
@@ -291,7 +295,6 @@ function renderPlayer() {
     }
 
     // 2. Якщо SVG не завантажено, використовуємо тимчасову заглушку (квадрат)
-    // ВИПРАВЛЕНО: Використовуємо заглушку, щоб гравець був видимий
     let color = '#8B4513'; // Default Robot
     let eyeColor = '#FFD700';
     
@@ -330,7 +333,7 @@ function renderCoffees() {
 }
 function renderEnemies() {
     enemies.forEach(e => {
-        const img = (e.type === 'virus') ? assets.enemyVirus : assets.bugImage;
+        const img = (e.type === 'virus') ? assets.enemyVirus : assets.enemyBug;
         if (img.complete) {
             ctx.drawImage(img, e.x, e.y, e.width, e.height);
         } else {
