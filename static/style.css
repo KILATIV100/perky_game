@@ -8,7 +8,7 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     background: #1c1c1e;
     overflow: hidden;
     height: 100vh;
@@ -103,19 +103,19 @@ canvas {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 10px; /* ЗМЕНШЕНО ВІДСТУП */
+    padding: 10px; /* Зменшення загального відступу */
     z-index: 20;
 }
 
 .menu-header {
     width: 100%;
     text-align: center;
-    margin-bottom: 10px; /* ЗМЕНШЕНО ВІДСТУП */
-    padding-top: 10px; /* ЗМЕНШЕНО ВІДСТУП */
+    margin-bottom: 10px;
+    padding-top: 10px;
 }
 
 .game-title {
-    font-size: 1.8rem; /* ЗМЕНШЕНО РОЗМІР ШРИФТУ */
+    font-size: 1.8rem; /* Зменшення розміру шрифту для кращої сумісності */
     font-weight: bold;
 }
 
@@ -129,26 +129,30 @@ canvas {
     background: rgba(0,0,0,0.2);
     border-radius: 15px;
     padding: 5px;
-    margin-bottom: 15px; /* ЗМЕНШЕНО ВІДСТУП */
-    /* ОНОВЛЕНО: ГНУЧКІСТЬ */
-    flex-wrap: wrap; 
-    justify-content: space-around;
+    margin-bottom: 15px;
+    
+    /* --- ВИПРАВЛЕННЯ ЧИТАБЕЛЬНОСТІ --- */
+    overflow-x: auto; /* ДОДАНО: Дозволяє горизонтальне прокручування */
+    -webkit-overflow-scrolling: touch; /* Покращення скролу на iOS */
+    white-space: nowrap; /* ДОДАНО: Запобігає переносу елементів на новий рядок */
+    justify-content: flex-start; /* Вирівнювання на початок */
+    /* ---------------------------------- */
 }
 
 .menu-tab {
-    flex: 1 1 18%; /* ОНОВЛЕНО: ГНУЧКІСТЬ */
-    padding: 8px; /* ЗМЕНШЕНО ВІДСТУП */
+    flex: 0 0 auto; /* ОНОВЛЕНО: Запобігає стисканню */
+    min-width: 80px; /* ДОДАНО: Мінімальна ширина для читабельності */
+    padding: 8px 12px; 
+    margin-right: 5px; /* ДОДАНО: Невеликий відступ між вкладками */
     border: none;
     background: transparent;
     color: rgba(255,255,255,0.7);
     border-radius: 10px;
     cursor: pointer;
-    font-size: 0.7rem; /* ЗМЕНШЕНО РОЗМІР ШРИФТУ */
+    font-size: 0.8rem; /* Зменшення розміру шрифту */
     font-weight: bold;
     transition: background 0.3s;
-    white-space: nowrap; /* Запобігає переносу тексту */
-    text-overflow: ellipsis;
-    overflow: hidden;
+    text-align: center;
 }
 .menu-tab.active {
     background: rgba(255,255,255,0.2);
@@ -158,7 +162,7 @@ canvas {
 .menu-section {
     background: rgba(0,0,0,0.2);
     border-radius: 15px;
-    padding: 15px; /* ЗМЕНШЕНО ВІДСТУП */
+    padding: 15px;
     display: none; /* JavaScript буде керувати видимістю */
 }
 .menu-section.active {
@@ -166,7 +170,7 @@ canvas {
 }
 
 .section-header {
-    font-size: 1.1rem; /* ЗМЕНШЕНО РОЗМІР ШРИФТУ */
+    font-size: 1.1rem;
     font-weight: bold;
     margin-bottom: 15px;
     text-align: center;
@@ -175,16 +179,16 @@ canvas {
 .mode-buttons {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px; /* ЗМЕНШЕНО ВІДСТУП */
+    gap: 10px;
 }
 
 .mode-btn {
-    padding: 12px; /* ЗМЕНШЕНО ВІДСТУП */
+    padding: 12px;
     border: none;
     border-radius: 10px;
     background: rgba(255,255,255,0.9);
     color: #333;
-    font-size: 0.9rem; /* ЗМЕНШЕНО РОЗМІР ШРИФТУ */
+    font-size: 0.9rem;
     font-weight: bold;
     cursor: pointer;
     transition: transform 0.2s;
@@ -314,7 +318,7 @@ canvas {
     cursor: pointer;
 }
 
-/* --- СТИЛІ МАГАЗИНУ (НОВІ) --- */
+/* --- СТИЛІ МАГАЗИНУ --- */
 .beans-balance {
     text-align: center;
     font-size: 1.1rem;
