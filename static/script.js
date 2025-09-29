@@ -21,6 +21,8 @@ const pauseBtn = document.getElementById('pauseBtn');
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
+// ДОДАНО: Для управління екраном завантаження
+const loadingScreen = document.getElementById('loadingScreen'); 
 const tabContents = {
     play: document.getElementById('playTab'),
     shop: document.getElementById('shopTab'), 
@@ -330,7 +332,7 @@ function renderCoffees() {
 }
 function renderEnemies() {
     enemies.forEach(e => {
-        const img = (e.type === 'virus') ? assets.enemyVirus : assets.bugImage;
+        const img = (e.type === 'virus') ? assets.enemyVirus : assets.enemyBug;
         if (img.complete) {
             ctx.drawImage(img, e.x, e.y, e.width, e.height);
         } else {
