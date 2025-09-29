@@ -150,10 +150,16 @@ function updateCamera() {
         // ОНОВЛЕНО: камера рухається швидше з множником
         camera.y += (targetY - camera.y) * 0.08 * gameSpeedMultiplier;
         
-        // ОНОВЛЕНО: Розрахунок поточної висоти
-        const newHeight = Math.max(0, Math.floor((-camera.y) + canvas.height * 0.6));
+        // --- ФІНАЛЬНЕ ВИПРАВЛЕННЯ: КОЕФІЦІЄНТ ВИСОТИ ---
+        // Припускаємо, що 100 ігрових одиниць = 1 метр.
+        const conversion_rate = 100;
+        const rawHeight = -player.y + (canvas.height - 150); // Відстань від стартової позиції
+        
+        const newHeight = Math.max(0, Math.floor(rawHeight / conversion_rate)); 
+        
         if (newHeight > currentHeight) currentHeight = newHeight;
-        heightScoreEl.textContent = `${currentHeight}м`;
+        heightScoreEl.textContent = `${currentHeight}м`; // Відображення цілого числа і "м"
+        // ----------------------------------------------
     }
 }
 function updateParticles() {
@@ -343,10 +349,8 @@ function renderClouds() {
 }
 function renderParticles() {
     particles.forEach(p => {
-        ctx.globalAlpha = p.life / 20;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, 3, 3);
-        ctx.globalAlpha = 1.0;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life--;
+        return p.life > 0;
     });
 }
 
@@ -387,16 +391,16 @@ function startGame(mode) {
 
     // 1. Створення гравця
     player = {
-        // ФІНАЛЬНЕ ВИПРАВЛЕННЯ: Гравець починає на 150px від низу Canvas
+        // ФІНАЛЬНЕ ВИПРАВЛЕННЯ: Гравець починає трохи ВИЩЕ центру екрану
         x: canvas.width / 2 - 15, 
-        y: canvas.height - 150, 
+        y: canvas.height / 2 - 100, // Починаємо вище першої платформи (яка тепер на canvas.height / 2)
         width: 30, height: 30, vx: 0, vy: 0,
         speed: 5, jumpPower: -13, gravity: 0.45,
         isFallingAfterBounce: false
     };
     
     // 2. Ініціалізація камери (КРИТИЧНО ВАЖЛИВО ДЛЯ ВИДИМОСТІ)
-    // Камера повинна бути розташована так, щоб гравець був на 40% від верху екрану
+    // Камера встановлюється прямо на гравця
     camera = { 
         y: player.y - canvas.height * 0.4
     };
@@ -489,7 +493,10 @@ function hideBonusPopup() {
 
 // --- ГЕНЕРАЦІЯ ОБ'ЄКТІВ ---
 function generateInitialPlatforms() {
-    platforms.push({ x: canvas.width / 2 - 40, y: canvas.height - 50, width: 80, height: 15, type: 'normal', color: '#A0522D' });
+    // ФІНАЛЬНЕ ВИПРАВЛЕННЯ: Перша платформа розташована біля центру екрану
+    const initialY = canvas.height / 2; 
+    
+    platforms.push({ x: canvas.width / 2 - 40, y: initialY, width: 80, height: 15, type: 'normal', color: '#A0522D' });
     for (let i = 0; i < 20; i++) generatePlatform();
 }
 function generatePlatform() {
