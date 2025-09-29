@@ -10,8 +10,8 @@ class GameStats(BaseModel):
     Pydantic автоматично перевіряє, що всі поля мають правильний тип.
     """
     user_id: int  # ID користувача в Telegram
-    username: Optional[str] = None
-    first_name: Optional[str] = None
+    username: Optional[str] = None # ДОДАНО: Для оновлення в базі даних
+    first_name: Optional[str] = None # ДОДАНО: Для оновлення в базі даних
     score: int    # Фінальний рахунок (висота)
     collected_beans: int # Кількість зібраних зерен за раунд
 
