@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from telegram import Update
 from telegram.error import RetryAfter
+import time
 
 # Імпортуємо роутер, конфігурацію та логіку бота
 from api import router as api_router
@@ -24,7 +25,7 @@ async def lifespan(app: FastAPI):
     """
     logger.info("Запуск додатка...")
     await setup_bot_handlers()
-    
+
     try:
         # Намагаємося встановити вебхук
         await perky_bot.application.bot.set_webhook(
@@ -33,14 +34,14 @@ async def lifespan(app: FastAPI):
         )
         logger.info(f"Вебхук встановлено на: {perky_bot.webhook_url}")
     except RetryAfter as e:
-        # Якщо отримуємо помилку флуду, просто логуємо це.
-        # Це означає, що інший процес вже встановив вебхук, і це нормально.
-        logger.warning(f"Помилка встановлення вебхука (Flood control). Ймовірно, він вже встановлений іншим процесом.")
+        # Якщо отримуємо помилку флуду, чекаємо і логуємо.
+        logger.warning(f"Telegram flood control: чекаємо {e.retry_after} секунд. Вебхук, ймовірно, вже встановлено іншим процесом.")
+        time.sleep(e.retry_after)
     except Exception as e:
         logger.error(f"Критична помилка при встановленні вебхука: {e}")
 
     yield # Додаток працює тут
-    
+
     # Цей код виконається при зупинці сервера
     logger.info("Зупинка додатка...")
     try:
@@ -66,17 +67,18 @@ async def telegram_webhook(request: Request):
     Основний вебхук для отримання оновлень від Telegram.
     """
     try:
-        if not perky_bot.application:
-            logger.error("Спроба обробити вебхук до ініціалізації бота.")
-            raise HTTPException(status_code=500, detail="Бот не ініціалізований")
-            
+        if not perky_bot.application or not perky_bot.application.initialized:
+            logger.error("Спроба обробити вебхук до повної ініціалізації бота.")
+            raise HTTPException(status_code=503, detail="Бот ще не готовий, спробуйте за мить")
+
         json_data = await request.json()
         update = Update.de_json(json_data, perky_bot.application.bot)
-        
-        await perky_bot.application.process_update(update)
-        
+
+        # Використовуємо асинхронний менеджер контексту для обробки
+        async with perky_bot.application:
+            await perky_bot.application.process_update(update)
+
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Помилка обробки вебхука: {e}")
         return {"status": "error handled"}
-
