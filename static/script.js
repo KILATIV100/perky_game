@@ -15,8 +15,8 @@ const rightBtn = document.getElementById('rightBtn');
 const restartBtn = document.getElementById('restartBtn');
 const menuBtn = document.getElementById('menuBtn');
 const gyroToggle = document.getElementById('gyroToggle');
-const soundToggle = document.getElementById('soundToggle'); // ДОДАНО
-const vibrationToggle = document.getElementById('vibrationToggle'); // ДОДАНО
+const soundToggle = document.getElementById('soundToggle'); 
+const vibrationToggle = document.getElementById('vibrationToggle'); 
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
@@ -26,13 +26,13 @@ const tabContents = {
     settings: document.getElementById('settingsTab')
 };
 
-// --- ДОДАНО: Глобальні активи SVG ---
+// --- Глобальні активи SVG ---
 const assets = {};
 assets.coffeeBean = new Image();
 assets.coffeeBean.src = '/static/coffee.svg'; 
-assets.enemyVirus = new Image(); // ДОДАНО: Ворог 1 (статичний)
+assets.enemyVirus = new Image(); 
 assets.enemyVirus.src = '/static/enemy_virus.svg'; 
-assets.enemyBug = new Image();   // ДОДАНО: Ворог 2 (рухомий)
+assets.enemyBug = new Image();   
 assets.enemyBug.src = '/static/enemy_bug.svg'; 
 const skinImages = {}; // Мапа для зберігання зображень скінів
 // ------------------------------------
@@ -40,7 +40,7 @@ const skinImages = {}; // Мапа для зберігання зображен�
 
 // Глобальні змінні
 let gameState = 'menu';
-let player, platforms, coffees, particles, clouds, camera, bonusTimer, gameTimer, enemies; // ДОДАНО ENEMIES
+let player, platforms, coffees, particles, clouds, camera, bonusTimer, gameTimer, enemies; 
 let currentHeight = 0, currentCoffeeCount = 0, gameMode = 'classic', gameSpeedMultiplier = 1; 
 let animationId;
 let keys = {}, touchControls = { left: false, right: false }, gyroTilt = 0;
@@ -55,7 +55,7 @@ let playerStats = {
 };
 
 // Налаштування гри
-let gameSettings = { gyro: true, gyroSensitivity: 25, sound: true, vibration: true }; // ОНОВЛЕНО
+let gameSettings = { gyro: true, gyroSensitivity: 25, sound: true, vibration: true };
 
 // --- ІНІЦІАЛІЗАЦІЯ ---
 function resizeCanvas() {
@@ -114,7 +114,7 @@ function update() {
     updatePlatforms();
     updateCamera();
     updateParticles();
-    updateEnemies(); // ДОДАНО
+    updateEnemies(); 
     checkCollisions();
     
     if (player.y > camera.y + canvas.height || (gameMode === 'timed' && gameTimer <= 0)) endGame();
@@ -130,7 +130,7 @@ function updatePlayer() {
         if (keys['ArrowRight'] || touchControls.right) targetVx = player.speed;
     }
     player.vx += (targetVx - player.vx) * 0.2; // Плавний рух
-    player.x += player.vx * gameSpeedMultiplier; // ОНОВЛЕНО: Застосування множника швидкості
+    player.x += player.vx * gameSpeedMultiplier; 
     player.vy += player.gravity;
     player.y += player.vy;
     
@@ -244,7 +244,7 @@ function render() {
     renderClouds();
     renderPlatforms();
     renderCoffees();
-    renderEnemies(); // ДОДАНО
+    renderEnemies(); 
     renderPlayer(); 
     renderParticles();
     ctx.restore();
@@ -282,7 +282,6 @@ function renderPlayer() {
         color = '#3498DB'; // Blue Ice
         eyeColor = '#fff';
     } 
-    // ... (тут логіка інших скінів)
 
     // Рендеринг квадрата як заглушки (це гарантує, що гравець буде видимим)
     ctx.fillStyle = color;
@@ -359,7 +358,6 @@ function startGame(mode) {
     if (gameTimer) clearInterval(gameTimer); // Очищаємо старий таймер
     
     platforms = []; coffees = []; particles = []; clouds = []; enemies = []; // ІНІЦІАЛІЗАЦІЯ ВОРОГІВ
-    camera = { y: 0 };
     currentHeight = 0; currentCoffeeCount = 0;
     
     // --- ЛОГІКА РЕЖИМІВ ГРИ ---
@@ -387,12 +385,20 @@ function startGame(mode) {
     }
     // --- КІНЕЦЬ ЛОГІКИ РЕЖИМІВ ---
 
+    // 1. Створення гравця
     player = {
-        // ВИПРАВЛЕННЯ: Гравець починає на 150px від низу
-        x: canvas.width / 2 - 15, y: canvas.height - 150, 
+        // ФІНАЛЬНЕ ВИПРАВЛЕННЯ: Гравець починає на 150px від низу Canvas
+        x: canvas.width / 2 - 15, 
+        y: canvas.height - 150, 
         width: 30, height: 30, vx: 0, vy: 0,
         speed: 5, jumpPower: -13, gravity: 0.45,
         isFallingAfterBounce: false
+    };
+    
+    // 2. Ініціалізація камери (КРИТИЧНО ВАЖЛИВО ДЛЯ ВИДИМОСТІ)
+    // Камера повинна бути розташована так, щоб гравець був на 40% від верху екрану
+    camera = { 
+        y: player.y - canvas.height * 0.4
     };
 
     generateInitialPlatforms(); 
