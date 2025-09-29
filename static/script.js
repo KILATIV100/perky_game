@@ -25,31 +25,16 @@ const tabContents = {
     social: document.getElementById('socialTab'),
     settings: document.getElementById('settingsTab')
 };
-
+const tutorialPopup = document.getElementById('tutorialPopup'); // ДОДАНО
+const finalTimeEl = document.getElementById('finalTime'); // ДОДАНО
 
 // Глобальні змінні
 let gameState = 'menu';
-let player, platforms, coffees, particles, clouds, camera, bonusTimer, gameTimer; // ДОДАНО gameTimer
-// ДОДАНО gameSpeedMultiplier для управління швидкістю гри
-let currentHeight = 0, currentCoffeeCount = 0, gameMode = 'classic', gameSpeedMultiplier = 1; 
+// ОНОВЛЕНО: ДОДАНО gameSpeedMultiplier та gameTimer
+let player, platforms, coffees, particles, clouds, camera, bonusTimer, gameTimer;
+let currentHeight = 0, currentCoffeeCount = 0, gameMode = 'classic', gameSpeedMultiplier = 1;
 let animationId;
 let keys = {}, touchControls = { left: false, right: false }, gyroTilt = 0;
-
-// ...
-
-// ОНОВЛЕНО: Застосовуємо множник до руху гравця
-function updatePlayer() {
-    // ... (логіка вибору targetVx)
-    player.vx += (targetVx - player.vx) * 0.2; 
-    
-    // ЗАСТОСУВАННЯ МНОЖНИКА ШВИДКОСТІ
-    player.x += player.vx * gameSpeedMultiplier; 
-    player.vy += player.gravity; // Гравітація залишається
-    player.y += player.vy; 
-    
-    // ... (логіка зациклення екрану)
-}
-
 
 // Статистика гравця
 let playerStats = {
@@ -60,7 +45,11 @@ let playerStats = {
 };
 
 // Налаштування гри
-let gameSettings = { gyro: true, gyroSensitivity: 25 };
+let gameSettings = { 
+    gyro: localStorage.getItem('gyroEnabled') === 'true' || true, 
+    gyroSensitivity: 25 
+};
+
 
 // --- ІНІЦІАЛІЗАЦІЯ ---
 function resizeCanvas() {
@@ -75,6 +64,7 @@ async function requestGyroPermission() {
         try {
             const permissionState = await DeviceOrientationEvent.requestPermission();
             gameSettings.gyro = (permissionState === 'granted');
+            localStorage.setItem('gyroEnabled', gameSettings.gyro);
             if (gameSettings.gyro) window.addEventListener('deviceorientation', handleOrientation);
         } catch (error) { gameSettings.gyro = false; }
     } else if ('DeviceOrientationEvent' in window) {
@@ -90,6 +80,10 @@ function handleOrientation(event) {
 }
 function updateGyroToggleUI() {
     gyroToggle.classList.toggle('active', gameSettings.gyro);
+    if (gameSettings.gyro && !window.listenerAdded) {
+        window.addEventListener('deviceorientation', handleOrientation);
+        window.listenerAdded = true;
+    }
 }
 
 // --- ГОЛОВНИЙ ЦИКЛ ГРИ ---
@@ -107,12 +101,18 @@ function update() {
     updateCamera();
     updateParticles();
     checkCollisions();
+    
+    // Перевірка на завершення гри
     if (player.y > camera.y + canvas.height) endGame();
+
+    // Перевірка таймера для режиму "На час"
+    if (gameMode === 'timed' && gameTimer !== null) {
+        // Оновлення UI таймера (якщо він відображається)
+    }
 }
 function updatePlayer() {
     let targetVx = 0;
     if (gameSettings.gyro && gyroTilt !== null) {
-        // Підвищена чутливість гіроскопа
         const tilt = Math.max(-gameSettings.gyroSensitivity, Math.min(gameSettings.gyroSensitivity, gyroTilt));
         targetVx = (tilt / gameSettings.gyroSensitivity) * player.speed * 1.5;
     } else {
@@ -120,7 +120,9 @@ function updatePlayer() {
         if (keys['ArrowRight'] || touchControls.right) targetVx = player.speed;
     }
     player.vx += (targetVx - player.vx) * 0.2; // Плавний рух
-    player.x += player.vx;
+    
+    // ЗАСТОСУВАННЯ МНОЖНИКА ШВИДКОСТІ
+    player.x += player.vx * gameSpeedMultiplier; 
     player.vy += player.gravity;
     player.y += player.vy;
     
@@ -129,11 +131,14 @@ function updatePlayer() {
     if (player.x + player.width < 0) player.x = canvas.width;
 }
 function updatePlatforms() {
-    const topPlatformY = platforms[platforms.length - 1].y;
-    if (topPlatformY > camera.y - 100) generatePlatform();
+    const topPlatformY = platforms.length > 0 ? platforms[platforms.length - 1].y : 0;
+    if (topPlatformY > camera.y - 150) generatePlatform(); // Трохи більше запасу для генерації
     platforms = platforms.filter(p => p.y < camera.y + canvas.height + 50);
 }
 function updateCamera() {
+    const newHeight = Math.max(0, -player.y + canvas.height - 100);
+    if (newHeight > currentHeight) currentHeight = newHeight; // Оновлення рахунку
+    
     const targetY = player.y - canvas.height * 0.4;
     if (targetY < camera.y) {
         camera.y += (targetY - camera.y) * 0.08;
@@ -158,10 +163,10 @@ function checkCollisions() {
     });
 
     coffees = coffees.filter(coffee => {
-        if (Math.hypot(player.x - coffee.x, player.y - coffee.y) < player.width) {
+        if (Math.hypot(player.x + player.width / 2 - coffee.x, player.y + player.height / 2 - coffee.y) < player.width / 2 + 5) {
             currentCoffeeCount++;
             updateGameUI();
-            createParticles(coffee.x, coffee.y, '#D2691E');
+            createParticles(coffee.x, coffee.y, '#FFD700');
             vibrate(20);
             return false; // Видалити зерно
         }
@@ -201,6 +206,7 @@ function render() {
     ctx.restore();
 }
 function renderPlayer() {
+    // Стилізований кавовий робот (квадрат + очі)
     ctx.fillStyle = '#8B4513';
     ctx.fillRect(player.x, player.y, player.width, player.height);
     ctx.fillStyle = '#FFD700';
@@ -226,10 +232,12 @@ function renderCoffees() {
 function renderClouds() {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     clouds.forEach(cloud => {
+        // ОНОВЛЕНО: Хмари рухаються відносно камери
+        const y_relative = cloud.y - camera.y * 0.5; 
         ctx.beginPath();
-        ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
-        ctx.arc(cloud.x + cloud.size * 0.8, cloud.y, cloud.size * 1.2, 0, Math.PI * 2);
-        ctx.arc(cloud.x + cloud.size * 1.6, cloud.y, cloud.size, 0, Math.PI * 2);
+        ctx.arc(cloud.x, y_relative, cloud.size, 0, Math.PI * 2);
+        ctx.arc(cloud.x + cloud.size * 0.8, y_relative, cloud.size * 1.2, 0, Math.PI * 2);
+        ctx.arc(cloud.x + cloud.size * 1.6, y_relative, cloud.size, 0, Math.PI * 2);
         ctx.fill();
         cloud.x += cloud.speed;
         if (cloud.x > canvas.width + cloud.size * 2) cloud.x = -cloud.size * 2;
@@ -245,18 +253,49 @@ function renderParticles() {
 }
 
 // --- ЛОГІКА ГРИ ---
+let timePlayed = 0; // Для режиму "На час"
 function startGame(mode) {
     gameState = 'playing';
     gameMode = mode;
+    gameSpeedMultiplier = 1; // Скидаємо за замовчуванням
+    timePlayed = 0;
+    gameTimer = null;
     
     platforms = []; coffees = []; particles = []; clouds = [];
     camera = { y: 0 };
     currentHeight = 0; currentCoffeeCount = 0;
 
+    // --- ЛОГІКА РЕЖИМІВ ГРИ ---
+    if (mode === 'timed') {
+        gameSpeedMultiplier = 2; // Прискорення x2
+        gameTimer = 60; // Встановлюємо таймер
+        const timerInterval = setInterval(() => {
+            if (gameState !== 'playing') clearInterval(timerInterval);
+            gameTimer--;
+            updateGameUI(); // Оновлюємо UI таймера
+            if (gameTimer <= 0) {
+                clearInterval(timerInterval);
+                if (gameState === 'playing') endGame();
+            }
+        }, 1000);
+    } else if (mode === 'extreme') {
+        gameSpeedMultiplier = 3; // Прискорення x3
+    }
+    
+    // Зміна фону для "Нічний" режиму
+    if (mode === 'night') {
+        canvas.style.background = 'linear-gradient(180deg, #1C305E 0%, #081028 100%)';
+    } else {
+        canvas.style.background = 'linear-gradient(180deg, #87CEEB 0%, #98FB98 100%)';
+    }
+    // --- КІНЕЦЬ ЛОГІКИ РЕЖИМІВ ---
+
+
     player = {
         x: canvas.width / 2 - 15, y: canvas.height - 100,
         width: 30, height: 30, vx: 0, vy: 0,
-        speed: 5, jumpPower: -13, gravity: 0.45,
+        speed: 5 * gameSpeedMultiplier, // Швидкість руху по горизонталі залежить від режиму
+        jumpPower: -13, gravity: 0.45,
         isFallingAfterBounce: false
     };
 
@@ -264,9 +303,10 @@ function startGame(mode) {
     generateClouds();
 
     menuScreen.style.display = 'none';
-    gameOverScreen.style.display = 'none'; // Ховаємо екран "Гру завершено"
+    gameOverScreen.style.display = 'none';
     controls.style.display = 'flex';
     updateGameUI();
+    vibrate(100);
 
     if (animationId) cancelAnimationFrame(animationId);
     gameLoop();
@@ -276,6 +316,14 @@ async function endGame() {
     cancelAnimationFrame(animationId);
     controls.style.display = 'none';
     
+    // Якщо це режим на час, записуємо час
+    if (gameMode === 'timed') {
+        timePlayed = 60 - (gameTimer || 0);
+        finalTimeEl.textContent = `${timePlayed}с`;
+    } else {
+        finalTimeEl.textContent = `Без обмежень`;
+    }
+
     await saveStatsOnServer();
     
     document.getElementById('finalHeight').textContent = Math.floor(currentHeight);
@@ -300,6 +348,7 @@ async function saveStatsOnServer() {
         });
         const data = await response.json();
         if (data.success) {
+            // Оновлюємо статистику гравця після збереження
             playerStats = { ...playerStats, ...data.stats };
             updateRecordsDisplay();
         }
@@ -307,11 +356,11 @@ async function saveStatsOnServer() {
 }
 function checkBonuses() {
     let bonusData = null;
-    if (currentCoffeeCount >= 5000) {
+    if (playerStats.total_beans >= 5000) { // Перевірка загальної кількості зерен
         bonusData = { title: "🎁 Брендована чашка!", instruction: "Покажіть це бариста, щоб отримати приз!" };
-    } else if (currentCoffeeCount >= 200) {
+    } else if (playerStats.total_beans >= 200) {
         bonusData = { title: "🎉 Знижка 5%!", instruction: "Покажіть це бариста, щоб отримати знижку!" };
-    } else if (currentCoffeeCount >= 100) {
+    } else if (playerStats.total_beans >= 100) {
         bonusData = { title: "🎉 Знижка 2%!", instruction: "Покажіть це бариста, щоб отримати знижку!" };
     }
     
@@ -320,6 +369,7 @@ function checkBonuses() {
     }
 }
 function showBonusPopup({ title, instruction }) {
+    // ... (логіка відображення бонусного попапу без змін)
     bonusPopup.innerHTML = `
         <div class="bonus-title">${title}</div>
         <div class="bonus-instruction">${instruction}</div>
@@ -354,10 +404,23 @@ function generatePlatform() {
     const x = Math.random() * (canvas.width - 80);
     
     let type = 'normal', color = '#A0522D';
-    const rand = Math.random();
+    let rand = Math.random();
+    
+    // --- ПРОГРЕСИВНА СКЛАДНІСТЬ (ПЕРЕШКОДИ З'ЯВЛЯЮТЬСЯ З 5 РІВНЯ / 500М) ---
+    const difficultyMultiplier = Math.min(1, Math.floor(currentHeight / 500) * 0.2 + 1);
+    
+    // Шанси збільшуються з висотою
+    const bouncyChance = 0.10 * difficultyMultiplier;
+    const fragileChance = 0.08 * difficultyMultiplier;
 
-    if (rand < 0.10) { type = 'bouncy'; color = '#2ECC71'; } 
-    else if (rand < 0.18) { type = 'fragile'; color = '#E74C3C'; }
+    if (rand < bouncyChance) { 
+        type = 'bouncy'; 
+        color = '#2ECC71'; 
+    } else if (rand < bouncyChance + fragileChance) { 
+        type = 'fragile'; 
+        color = '#E74C3C'; 
+    }
+    // --- КІНЕЦЬ ПРОГРЕСИВНОЇ СКЛАДНОСТІ ---
     
     platforms.push({ x, y, width: 80, height: 15, type, color });
 
@@ -386,15 +449,19 @@ function createParticles(x, y, color, count = 10) {
 
 // --- UI ТА ОБРОБНИКИ ПОДІЙ ---
 function updateGameUI() {
-    const newHeight = Math.max(0, -player.y + canvas.height - 100);
-    if (newHeight > currentHeight) currentHeight = newHeight;
     heightScoreEl.textContent = `${Math.floor(currentHeight)}м`;
     coffeeCountEl.textContent = `☕ ${currentCoffeeCount}`;
+    
+    // Оновлення таймера в UI під час гри
+    if (gameMode === 'timed' && gameTimer !== null) {
+        heightScoreEl.textContent = `🕒 ${gameTimer.toString().padStart(2, '0')}с`;
+    }
 }
 function updateRecordsDisplay() {
     bestHeightEl.textContent = `${playerStats.max_height}м`;
 }
 function setupEventListeners() {
+    // ... (обробники клавіатури, тач-керування)
     window.addEventListener('keydown', e => keys[e.code] = true);
     window.addEventListener('keyup', e => keys[e.code] = false);
 
@@ -404,11 +471,14 @@ function setupEventListeners() {
     rightBtn.addEventListener('touchend', e => { e.preventDefault(); touchControls.right = false; });
     
     document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
-        btn.addEventListener('click', () => startGame(btn.dataset.mode));
+        btn.addEventListener('click', () => {
+            startGame(btn.dataset.mode);
+            localStorage.setItem('hasPlayed', 'true'); // Відмічаємо, що гравець грав
+            hideTutorial();
+        });
     });
     
     restartBtn.addEventListener('click', () => {
-        // Додано ховання екрану завершення гри
         gameOverScreen.style.display = 'none';
         startGame(gameMode);
     });
@@ -416,8 +486,10 @@ function setupEventListeners() {
         gameState = 'menu';
         gameOverScreen.style.display = 'none';
         menuScreen.style.display = 'flex';
+        vibrate(50);
     });
 
+    // ... (обробники вкладок меню та гіроскопа)
     menuTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const activeTab = tab.dataset.tab;
@@ -436,10 +508,17 @@ function setupEventListeners() {
             requestGyroPermission();
         } else {
             gameSettings.gyro = false;
+            localStorage.setItem('gyroEnabled', gameSettings.gyro);
             window.removeEventListener('deviceorientation', handleOrientation);
             updateGyroToggleUI();
         }
+        vibrate(10);
     });
+    
+    // Обробник кнопки туторіалу
+    if (document.getElementById('closeTutorialBtn')) {
+        document.getElementById('closeTutorialBtn').addEventListener('click', hideTutorial);
+    }
 }
 function updateStatsDisplayInMenu() {
     const grid = document.getElementById('statsGrid');
@@ -474,11 +553,20 @@ function vibrate(duration) {
     }
 }
 
+// --- ТУТОРІАЛ ---
+function showTutorial() {
+    tutorialPopup.style.display = 'flex';
+}
+function hideTutorial() {
+    tutorialPopup.style.display = 'none';
+}
+
 // --- ПОЧАТКОВИЙ ЗАПУСК ---
 async function initializeApp() {
     resizeCanvas();
     setupEventListeners();
     updateGyroToggleUI();
+    
     if (gameSettings.gyro) requestGyroPermission();
     
     if (playerStats.user_id) {
@@ -495,6 +583,11 @@ async function initializeApp() {
     
     updateRecordsDisplay();
     updateStatsDisplayInMenu();
+    
+    // Перевірка на перший запуск
+    if (localStorage.getItem('hasPlayed') !== 'true') {
+        showTutorial();
+    }
 }
 
 initializeApp();
