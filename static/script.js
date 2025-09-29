@@ -22,6 +22,10 @@ const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
 const loadingScreen = document.getElementById('loadingScreen');
+const pauseScreen = document.getElementById('pauseScreen'); // ДОДАНО
+const resumeBtn = document.getElementById('resumeBtn'); // ДОДАНО
+const exitBtn = document.getElementById('exitBtn'); // ДОДАНО
+
 const tabContents = {
     play: document.getElementById('playTab'),
     shop: document.getElementById('shopTab'), 
@@ -213,18 +217,28 @@ function checkCollisions() {
         return true;
     });
 
+    // ОНОВЛЕНО: Економіка - збираємо менше зерен на початку
+    const beansCollectedThisFrame = [];
     coffees = coffees.filter(coffee => {
-        // Використовуємо більш точну перевірку на зіткнення
         const dist = Math.hypot(player.x + player.width / 2 - coffee.x, player.y + player.height / 2 - coffee.y);
-        if (dist < player.width / 2 + 5) { // Радіус зіткнення
-            currentCoffeeCount++;
-            updateGameUI();
+        if (dist < player.width / 2 + 5) { 
+            beansCollectedThisFrame.push(coffee);
             createParticles(coffee.x, coffee.y, '#D2691E');
             vibrate(20);
             return false; // Видалити зерно
         }
         return true;
     });
+    
+    if (beansCollectedThisFrame.length > 0) {
+        // ВИПРАВЛЕНО: Зменшення кількості зерен до 200м
+        let beanValue = 1; // Базова вартість 1
+        if (currentHeight >= 200) beanValue = 2;
+        if (currentHeight >= 500) beanValue = 3; 
+
+        currentCoffeeCount += beansCollectedThisFrame.length * beanValue;
+        updateGameUI();
+    }
 }
 function handlePlatformCollision(platform) {
     if (player.isFallingAfterBounce) return; // Ігнорувати зіткнення відразу після відскопу
@@ -254,7 +268,7 @@ function render() {
     ctx.save();
     ctx.translate(0, -camera.y);
     renderClouds();
-    renderPlatforms(); // ВИПРАВЛЕНО: Функція тепер існує
+    renderPlatforms(); 
     renderCoffees();
     renderEnemies(); 
     renderPlayer(); 
@@ -401,13 +415,15 @@ function startGame(mode) {
         // Стандартний фон для "Класичний", "На час" та "Екстремальний"
         canvas.style.background = 'linear-gradient(180deg, #87CEEB 0%, #98FB98 100%)';
     }
-    // --- КІНЕЦЬ ЛОГІКИ РЕЖІМІВ ---
+    // --- КІНЕЦЬ ЛОГІКИ РЕЖИМІВ ---
 
     // 1. Створення гравця
     player = {
-        x: canvas.width / 2 - 15, 
+        x: canvas.width / 2 - 30, // ОНОВЛЕНО: Центрування для 60px
         y: canvas.height - 100, // Використовуємо робочі координати
-        width: 30, height: 30, vx: 0, vy: 0,
+        width: 60, // ОНОВЛЕНО: ЗБІЛЬШЕНО РОЗМІР ГЕРОЯ
+        height: 60, // ОНОВЛЕНО: ЗБІЛЬШЕНО РОЗМІР ГЕРОЯ
+        vx: 0, vy: 0,
         speed: 5, jumpPower: -13, gravity: 0.45,
         isFallingAfterBounce: false
     };
@@ -521,24 +537,24 @@ function generatePlatform() {
     let type = 'normal', color = '#A0522D';
     const rand = Math.random();
 
-    // --- ЛОГІКА ПРОГРЕСИВНОЇ СКЛАДНОСТІ ---
+    // --- ЛОГІКА ПРОГРЕСИВНОЇ СКЛАДНОСТІ (ОНОВЛЕНІ ПОРОГИ) ---
     
-    // Початкові шанси (висота < 500м)
+    // Початкові шанси (висота < 200м)
     let bouncy_chance = 0.10; // 10%
     let fragile_chance = 0.08; // 8%
 
-    // Рівень складності 1: Вище 500м
-    if (currentHeight >= 500) {
+    // Рівень складності 1: Від 200м
+    if (currentHeight >= 200) {
         bouncy_chance = 0.15; // 15%
         fragile_chance = 0.15; // 15%
-        if (Math.random() < 0.1) generateEnemy(y - 50, 'virus'); // 10% шанс статичного ворога
+        if (Math.random() < 0.15) generateEnemy(y - 50, 'virus'); // 15% шанс статичного ворога
     }
     
-    // Рівень складності 2: Вище 1500м
-    if (currentHeight >= 1500) {
+    // Рівень складності 2: Від 500м
+    if (currentHeight >= 500) {
         bouncy_chance = 0.20; // 20%
         fragile_chance = 0.25; // 25% (особливо небезпечні)
-        if (Math.random() < 0.15) generateEnemy(y - 50, 'bug'); // 15% шанс рухомого ворога
+        if (Math.random() < 0.20) generateEnemy(y - 50, 'bug'); // 20% шанс рухомого ворога
     }
 
     // Визначення типу платформи на основі змінених шансів
@@ -555,7 +571,11 @@ function generatePlatform() {
     
     platforms.push({ x, y, width: 80, height: 15, type, color });
 
-    if (type === 'normal' && Math.random() < 0.5) {
+    // ОНОВЛЕНО: Економіка - збираємо менше зерен на початку
+    let coffeeChance = 0.5;
+    if (currentHeight < 200) coffeeChance = 0.3; // Менше зерен на початку
+
+    if (type === 'normal' && Math.random() < coffeeChance) {
         coffees.push({ x: x + 40, y: y - 20 });
     }
 }
@@ -602,14 +622,36 @@ function updateGameUI() {
 function updateRecordsDisplay() {
     bestHeightEl.textContent = `${playerStats.max_height}м`;
 }
-function goToMenu() {
-    // Функція паузи та повернення в меню
-    gameState = 'menu';
+
+// ОНОВЛЕНО: Функція паузи
+function pauseGame() {
+    if (gameState !== 'playing') return;
+    gameState = 'paused';
     cancelAnimationFrame(animationId);
     controls.style.display = 'none';
     pauseBtn.style.display = 'none';
+    pauseScreen.style.display = 'flex'; // Показати екран паузи
+}
+
+function resumeGame() {
+    if (gameState !== 'paused') return;
+    gameState = 'playing';
+    pauseScreen.style.display = 'none'; // Приховати екран паузи
+    controls.style.display = (gameSettings.gyro ? 'none' : 'flex');
+    pauseBtn.style.display = 'block';
+    gameLoop(); // Продовжити цикл
+}
+
+function exitToMenu() {
+    // Якщо виходимо з паузи, вважаємо гру завершеною для збереження результатів
+    if (gameState === 'paused') {
+        endGame();
+    }
+    gameState = 'menu';
+    pauseScreen.style.display = 'none';
     menuScreen.style.display = 'flex';
 }
+
 
 function setupEventListeners() {
     // Обробники клавіш та дотиків без змін
@@ -637,9 +679,15 @@ function setupEventListeners() {
         menuScreen.style.display = 'flex';
     });
     
-    // --- ДОДАНО: ОБРОБНИК КНОПКИ ПАУЗИ ---
+    // --- ДОДАНО: ОБРОБНИКИ КНОПОК ПАУЗИ ---
     if (pauseBtn) {
-        pauseBtn.addEventListener('click', goToMenu);
+        pauseBtn.addEventListener('click', pauseGame);
+    }
+    if (resumeBtn) {
+        resumeBtn.addEventListener('click', resumeGame);
+    }
+    if (exitBtn) {
+        exitBtn.addEventListener('click', exitToMenu);
     }
     // ------------------------------------
 
