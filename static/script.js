@@ -20,6 +20,7 @@ const vibrationToggle = document.getElementById('vibrationToggle');
 const pauseBtn = document.getElementById('pauseBtn'); 
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
+// ВИПРАВЛЕНО: Знову використовуємо shopContent, який є в DOM
 const shopContent = document.getElementById('shopContent'); 
 const tabContents = {
     play: document.getElementById('playTab'),
@@ -151,8 +152,8 @@ function updateCamera() {
         // ОНОВЛЕНО: камера рухається швидше з множником
         camera.y += (targetY - camera.y) * 0.08 * gameSpeedMultiplier;
         
-        // --- ФІНАЛЬНЕ ВИПРАВЛЕННЯ: КОЕФІЦІЄНТ ВИСОТИ ---
-        const initialPlayerY = canvas.height / 2 - 100; // Фіксована початкова Y гравця
+        // --- ВИПРАВЛЕНО: КОЕФІЦІЄНТ ВИСОТИ ---
+        const initialPlayerY = canvas.height / 2 - 100; // Початкова Y гравця
         const conversion_rate = 100; // 100 ігрових одиниць = 1 метр
         const rawHeight = initialPlayerY - player.y; 
         
@@ -279,6 +280,7 @@ function renderPlayer() {
     }
 
     // 2. Якщо SVG не завантажено, використовуємо тимчасову заглушку (квадрат)
+    // ВИПРАВЛЕНО: Використовуємо заглушку, щоб гравець був видимий
     let color = '#8B4513'; // Default Robot
     let eyeColor = '#FFD700';
     
