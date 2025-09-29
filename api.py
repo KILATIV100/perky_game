@@ -1,63 +1,61 @@
-# api.py: Логіка для API ендпоінтів.
-# Відповідає за обробку запитів від гри (збереження статистики, отримання рейтингів).
-
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
 import logging
 
-# Імпортуємо Pydantic-модель та об'єкт бази даних
-from models import GameStats
 from database import db
+from models import GameStats
 
-# Налаштування логування
+# Налаштування логера
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Створюємо роутер для API
+# Створення роутера
 router = APIRouter()
 
-@router.get("/game", response_class=FileResponse)
-async def get_game_page():
-    """
-    Головний ендпоінт для гри.
-    Віддає користувачу файл index.html, який запускає гру.
-    """
-    return "static/index.html"
-
 @router.post("/save_stats")
-async def save_stats(stats: GameStats):
-    """
-    Зберігає статистику гри, отриману від клієнта.
-    """
+async def save_stats_endpoint(stats: GameStats):
+    """Ендпоінт для збереження статистики гри."""
     try:
+        # Спочатку переконуємось, що користувач існує, або створюємо/оновлюємо його
+        db.save_or_update_user(stats.user_id, stats.username, stats.first_name)
+        
+        # Зберігаємо результат гри
         db.save_game_result(
             user_id=stats.user_id,
             score=stats.score,
-            beans_collected=stats.collected_beans
+            collected_beans=stats.collected_beans
         )
-        return {"success": True, "message": "Статистику успішно збережено"}
+        
+        # Повертаємо оновлену статистику, щоб гра могла її відобразити
+        updated_stats = db.get_user_stats(stats.user_id)
+        
+        return {"success": True, "message": "Статистику успішно збережено", "stats": updated_stats}
     except Exception as e:
         logger.error(f"Помилка збереження статистики для user {stats.user_id}: {e}")
-        raise HTTPException(status_code=500, detail="Не вдалося зберегти статистику")
+        raise HTTPException(status_code=500, detail="Внутрішня помилка сервера при збереженні статистики.")
 
 @router.get("/stats/{user_id}")
-async def get_stats(user_id: int):
-    """
-    Повертає статистику конкретного гравця за його ID.
-    """
-    user_stats = db.get_user_stats(user_id)
-    if not user_stats:
-        raise HTTPException(status_code=404, detail="Статистика для гравця не знайдена")
-    return user_stats
+async def get_user_stats_endpoint(user_id: int):
+    """Ендпоінт для отримання статистики користувача."""
+    try:
+        stats = db.get_user_stats(user_id)
+        if stats:
+            return {"success": True, "stats": stats}
+        else:
+            # Якщо користувача ще немає в базі, повертаємо нульову статистику
+            return {"success": True, "stats": {
+                "user_id": user_id, "max_height": 0, "total_beans": 0, "games_played": 0
+            }}
+    except Exception as e:
+        logger.error(f"Помилка отримання статистики для user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Внутрішня помилка сервера при отриманні статистики.")
 
 @router.get("/leaderboard")
-async def get_leaderboard():
-    """
-    Повертає глобальну таблицю лідерів.
-    """
-    leaderboard_data = db.get_leaderboard()
-    # Конвертуємо дані з бази в більш зручний формат JSON
-    leaderboard = [
-        {"name": row[0], "max_height": row[1], "total_beans": row[2]}
-        for row in leaderboard_data
-    ]
-    return {"leaderboard": leaderboard}
+async def get_leaderboard_endpoint():
+    """Ендпоінт для отримання таблиці лідерів."""
+    try:
+        leaderboard = db.get_leaderboard()
+        return {"success": True, "leaderboard": leaderboard}
+    except Exception as e:
+        logger.error(f"Помилка отримання рейтингу: {e}")
+        raise HTTPException(status_code=500, detail="Внутрішня помилка сервера при отриманні рейтингу.")
+
