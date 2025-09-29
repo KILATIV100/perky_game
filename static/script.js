@@ -195,7 +195,7 @@ function render() {
     renderClouds();
     renderPlatforms();
     renderCoffees();
-    renderPlayer();
+    renderPlayer(); // ВПЕВНЕНІСТЬ: Гравець рендериться тут
     renderParticles();
     ctx.restore();
     
@@ -210,33 +210,37 @@ function render() {
 function renderPlayer() {
     const skinName = playerStats.active_skin; // напр., 'default_robot.svg'
     const skinImg = skinImages[skinName];
+    const x = player.x;
+    const y = player.y;
+    const w = player.width;
+    const h = player.height;
 
     // 1. Спроба рендерингу SVG-скіна
     if (skinImg && skinImg.complete) {
-        ctx.drawImage(skinImg, player.x, player.y, player.width, player.height);
-        return; // SVG відрендерено, виходимо
+        ctx.drawImage(skinImg, x, y, w, h);
+        return; 
     }
 
-    // 2. Якщо SVG не завантажено, використовуємо тимчасову заглушку на основі імені файлу
+    // 2. Якщо SVG не завантажено, використовуємо тимчасову заглушку (квадрат)
     let color = '#8B4513'; // Default Robot
     let eyeColor = '#FFD700';
     
-    if (skinName.includes('skin_1.svg')) { // Наприклад, Скін #1
+    if (skinName.includes('skin_1.svg')) { 
         color = '#E74C3C'; // Red Hot
         eyeColor = '#333';
-    } else if (skinName.includes('skin_2.svg')) { // Наприклад, Скін #2
+    } else if (skinName.includes('skin_2.svg')) { 
         color = '#3498DB'; // Blue Ice
         eyeColor = '#fff';
     } 
-    // ... (тут можна додати більше логіки для інших скінів)
+    // ... (додайте логіку для інших скінів тут, якщо потрібно)
 
     // Рендеринг квадрата як заглушки
     ctx.fillStyle = color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    ctx.fillRect(x, y, w, h);
     
     ctx.fillStyle = eyeColor;
-    ctx.fillRect(player.x + 5, player.y + 8, 5, 5);
-    ctx.fillRect(player.x + 20, player.y + 8, 5, 5);
+    ctx.fillRect(x + 5, y + 8, 5, 5);
+    ctx.fillRect(x + 20, y + 8, 5, 5);
 }
 
 function renderCoffees() {
@@ -273,10 +277,8 @@ function renderClouds() {
 }
 function renderParticles() {
     particles.forEach(p => {
-        ctx.globalAlpha = p.life / 20;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, 3, 3);
-        ctx.globalAlpha = 1.0;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life--;
+        return p.life > 0;
     });
 }
 
@@ -323,7 +325,7 @@ function startGame(mode) {
         isFallingAfterBounce: false
     };
 
-    generateInitialPlatforms();
+    generateInitialPlatforms(); // ВПЕВНЕНІСТЬ: Тут генеруються платформи
     generateClouds();
 
     menuScreen.style.display = 'none';
@@ -411,6 +413,7 @@ function hideBonusPopup() {
 
 // --- ГЕНЕРАЦІЯ ОБ'ЄКТІВ ---
 function generateInitialPlatforms() {
+    // ВПЕВНЕНІСТЬ: Тут створюється перша платформа. 
     platforms.push({ x: canvas.width / 2 - 40, y: canvas.height - 50, width: 80, height: 15, type: 'normal', color: '#A0522D' });
     for (let i = 0; i < 20; i++) generatePlatform();
 }
@@ -486,8 +489,6 @@ function updateRecordsDisplay() {
     bestHeightEl.textContent = `${playerStats.max_height}м`;
 }
 function setupEventListeners() {
-    // --- ВИПРАВЛЕННЯ 1: НЕПРАЦЮЮЧІ КНОПКИ ---
-    
     // Обробники клавіш та дотиків без змін
     window.addEventListener('keydown', e => keys[e.code] = true);
     window.addEventListener('keyup', e => keys[e.code] = false);
@@ -525,14 +526,14 @@ function setupEventListeners() {
             
             // Вкладка "Гра" містить все, включаючи статистику і рейтинг
             if (activeTab === 'play') { 
-                document.getElementById('playTab').classList.add('active'); // Активація контейнера
-                updateStatsDisplayInMenu(); // Оновлення статистики
-                loadLeaderboard(); // Завантаження рейтингу
+                document.getElementById('playTab').classList.add('active'); 
+                updateStatsDisplayInMenu(); 
+                loadLeaderboard(); 
             } else if (activeTab === 'shop') {
-                document.getElementById('shopTab').classList.add('active'); // Активація контейнера
+                document.getElementById('shopTab').classList.add('active'); 
                 loadShop(); 
             } else if (activeTab === 'settings') {
-                document.getElementById('settingsTab').classList.add('active'); // Активація контейнера
+                document.getElementById('settingsTab').classList.add('active'); 
             }
         });
     });
@@ -609,6 +610,9 @@ async function loadShop() {
                         const is_active = skin.is_active; 
 
                         let button_html = '';
+                        // Вставка зображення для скіна
+                        const skinImageHtml = `<img src="/static/${skin.svg_data}" alt="${skin.name}" class="shop-skin-img">`;
+
                         if (is_active) {
                             button_html = '<button class="skin-btn active">АКТИВНИЙ</button>';
                         } else if (is_owned) {
@@ -619,7 +623,8 @@ async function loadShop() {
 
                         return `
                             <div class="shop-item ${is_active ? 'item-active' : ''}" data-skin-name="${skin.svg_data}">
-                                <div class="skin-icon">${skin.name}</div>
+                                <div class="skin-icon">${skinImageHtml}</div> 
+                                <div class="skin-name-text">${skin.name}</div>
                                 ${button_html}
                             </div>
                         `;
