@@ -57,7 +57,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Підключаємо роути для гри (/game, /save_stats, etc.)
 app.include_router(api_router)
 
-# --- ДОДАНО: МАРШРУТ ДЛЯ ОБСЛУГОВУВАННЯ ГРИ ---
+# --- ВИПРАВЛЕННЯ 404: ДОДАНО МАРШРУТ ДЛЯ ОБСЛУГОВУВАННЯ ГРИ ---
 @app.get("/game", include_in_schema=False)
 async def get_game_html():
     """Обслуговує HTML-файл гри, коли користувач переходить за шляхом /game."""
