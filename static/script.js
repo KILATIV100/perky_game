@@ -19,12 +19,12 @@ const menuBtn = document.getElementById('menuBtn');
 const gyroToggle = document.getElementById('gyroToggle');
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
-const shopContent = document.getElementById('shopContent'); // ДОДАНО
+const shopContent = document.getElementById('shopContent'); 
 const tabContents = {
     play: document.getElementById('playTab'),
-    progress: document.getElementById('progressTab'),
-    social: document.getElementById('socialTab'),
-    shop: document.getElementById('shopTab'), // ДОДАНО
+    // ВИДАЛЕНО: progress: document.getElementById('progressTab'),
+    // ВИДАЛЕНО: social: document.getElementById('socialTab'),
+    shop: document.getElementById('shopTab'), 
     settings: document.getElementById('settingsTab')
 };
 
@@ -41,7 +41,7 @@ let playerStats = {
     username: tg.initDataUnsafe?.user?.username || 'Guest',
     first_name: tg.initDataUnsafe?.user?.first_name || 'Player',
     max_height: 0, total_beans: 0, games_played: 0,
-    active_skin: 'default' // ДОДАНО: Активний скін
+    active_skin: 'default'
 };
 
 // Налаштування гри
@@ -200,7 +200,8 @@ function render() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.font = '24px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40); // Потрібно відняти camera.y у функції
+        // Потрібно відняти camera.y у функції
+        ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40); 
     }
 }
 function renderPlayer() {
@@ -500,9 +501,13 @@ function setupEventListeners() {
             tab.classList.add('active');
             tabContents[activeTab].classList.add('active');
             
-            if (activeTab === 'social') loadLeaderboard();
-            if (activeTab === 'progress') updateStatsDisplayInMenu();
-            if (activeTab === 'shop') loadShop(); // ДОДАНО
+            // ОНОВЛЕНО: Запуск функцій для нової структури меню
+            if (activeTab === 'play') { 
+                updateStatsDisplayInMenu(); // Потрібно оновити статистику та рейтинг, оскільки вони тепер на цій вкладці
+                loadLeaderboard(); 
+            }
+            if (activeTab === 'shop') loadShop(); 
+            // ВИДАЛЕНО: 'social' та 'progress' окремих вкладок більше немає
         });
     });
     
@@ -517,13 +522,21 @@ function setupEventListeners() {
     });
 }
 function updateStatsDisplayInMenu() {
-    const grid = document.getElementById('statsGrid');
+    // ОНОВЛЕНО: Функція використовує елементи, які тепер знаходяться у 'playTab'
+    const grid = document.getElementById('statsGrid'); 
+    const leaderboardContent = document.getElementById('leaderboardContent'); 
+    
     // ОНОВЛЕНО: Відображення активного скіна
     grid.innerHTML = `
         <div>🏆 Рекорд: <span>${playerStats.max_height}м</span></div>
         <div>☕ Всього зерен: <span>${playerStats.total_beans}</span></div>
         <div>🎮 Ігор зіграно: <span>${playerStats.games_played}</span></div>
         <div>🤖 Активний скін: <span>${playerStats.active_skin || 'default'}</span></div>`;
+        
+    // ОНОВЛЕНО: Переконаємося, що рейтинг також завантажується
+    if (leaderboardContent.innerHTML === '') {
+        loadLeaderboard();
+    }
 }
 async function loadLeaderboard() {
     const content = document.getElementById('leaderboardContent');
@@ -674,7 +687,4 @@ async function initializeApp() {
     
     if (gameSettings.gyro) requestGyroPermission(); // Запит дозволу після завантаження скіна
     
-    updateStatsDisplayInMenu();
-}
-
-initializeApp();
+    updateStatsDisplayInMenu(); // Початкове завантаження контенту вклад
