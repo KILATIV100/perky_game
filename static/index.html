@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🤖☕ Perky Coffee Jump</title>
+    <title>Perky Coffee Jump</title> 
+
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -19,6 +20,7 @@
             <div class="records-display" id="recordsDisplay">
                 <div>🏆 Рекорд: <span id="bestHeight">0</span>м</div>
             </div>
+            <button class="pause-btn" id="pauseBtn">||</button>
         </div>
 
         <div class="controls" id="controls">
@@ -26,28 +28,23 @@
             <button class="control-btn" id="rightBtn">→</button>
         </div>
 
-        <div class="loading-screen" id="loadingScreen">
-            <div class="loader-content">
-                <div class="spinner"></div>
-                <p>Завантаження даних...</p>
-            </div>
-        </div>
-
         <div class="menu-screen" id="menuScreen">
             <div class="menu-header">
-                <div class="game-title">🤖☕ Perky Coffee Jump</div>
+                <img src="/static/perky_logo.svg" alt="Perky Coffee Jump Logo" class="game-logo">
+                <div class="game-title">Perky Coffee Jump</div>
             </div>
             
             <div class="menu-content">
                 <div class="menu-tabs">
-                    <button class="menu-tab active" data-tab="play">🎮 Гра</button>
-                    <button class="menu-tab" data-tab="progress">📊 Прогрес</button>
-                    <button class="menu-tab" data-tab="social">🏆 Рейтинг</button>
+                    <button class="menu-tab active" data-tab="play">🎮 Гра / Прогрес</button>
+                    <button class="menu-tab" data-tab="shop">🛒 Магазин</button>
                     <button class="menu-tab" data-tab="settings">⚙️ Налаштування</button>
                 </div>
 
                 <div class="menu-section-container">
+                    
                     <div class="menu-section active" id="playTab">
+                        
                         <div class="section-header"><span>🎯 Режими гри</span></div>
                         <div class="mode-buttons">
                             <button class="mode-btn" data-mode="classic">Класичний</button>
@@ -55,16 +52,22 @@
                             <button class="mode-btn" data-mode="night">Нічний</button>
                             <button class="mode-btn" data-mode="extreme">Екстремальний</button>
                         </div>
-                    </div>
 
-                    <div class="menu-section" id="progressTab">
+                        <br>
+                        
                         <div class="section-header"><span>📊 Ваша статистика</span></div>
                         <div id="statsGrid" class="stats-grid"></div>
-                    </div>
-
-                    <div class="menu-section" id="socialTab">
+                        
+                        <br>
+                        
                         <div class="section-header"><span>🏆 Загальний рейтинг</span></div>
                         <div id="leaderboardContent" class="scrollable-content"></div>
+                    </div>
+                    
+                    <div class="menu-section" id="shopTab">
+                         <div class="section-header"><span>🤖 Скіни робота</span></div> 
+                         <div id="shopContent" class="scrollable-content">
+                            </div>
                     </div>
                     
                     <div class="menu-section" id="settingsTab">
@@ -73,6 +76,14 @@
                              <div class="setting-item">
                                  <span>Гіроскоп</span>
                                  <div class="toggle-switch" id="gyroToggle"></div>
+                             </div>
+                              <div class="setting-item">
+                                 <span>Звуки</span>
+                                 <div class="toggle-switch active" id="soundToggle"></div>
+                             </div>
+                              <div class="setting-item">
+                                 <span>Вібрація</span>
+                                 <div class="toggle-switch active" id="vibrationToggle"></div>
                              </div>
                          </div>
                     </div>
