@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from telegram import Update
 from telegram.error import RetryAfter
 import time
@@ -27,22 +28,19 @@ async def lifespan(app: FastAPI):
     await setup_bot_handlers()
 
     try:
-        # Намагаємося встановити вебхук
         await perky_bot.application.bot.set_webhook(
             url=perky_bot.webhook_url,
             allowed_updates=["message", "callback_query"]
         )
         logger.info(f"Вебхук встановлено на: {perky_bot.webhook_url}")
     except RetryAfter as e:
-        # Якщо отримуємо помилку флуду, чекаємо і логуємо.
         logger.warning(f"Telegram flood control: чекаємо {e.retry_after} секунд. Вебхук, ймовірно, вже встановлено іншим процесом.")
         time.sleep(e.retry_after)
     except Exception as e:
         logger.error(f"Критична помилка при встановленні вебхука: {e}")
 
-    yield # Додаток працює тут
+    yield
 
-    # Цей код виконається при зупинці сервера
     logger.info("Зупинка додатка...")
     try:
         await perky_bot.application.bot.delete_webhook()
@@ -52,6 +50,9 @@ async def lifespan(app: FastAPI):
 
 # Створюємо FastAPI додаток
 app = FastAPI(lifespan=lifespan, title="Perky Coffee Jump")
+
+# ВАЖЛИВО: Монтуємо теку "static" для роздачі CSS та JS файлів
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Підключаємо роути для гри (/game, /save_stats, etc.)
 app.include_router(api_router)
@@ -67,8 +68,8 @@ async def telegram_webhook(request: Request):
     Основний вебхук для отримання оновлень від Telegram.
     """
     try:
-        if not perky_bot.application or not perky_bot.application.initialized:
-            logger.error("Спроба обробити вебхук до повної ініціалізації бота.")
+        if not perky_bot.application:
+            logger.error("Спроба обробити вебхук до ініціалізації бота.")
             raise HTTPException(status_code=503, detail="Бот ще не готовий, спробуйте за мить")
 
         json_data = await request.json()
