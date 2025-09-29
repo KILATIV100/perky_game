@@ -47,11 +47,13 @@ canvas {
 }
 
 .score-display {
+    /* ВИПРАВЛЕНО: Розділяємо UI-елементи. Додано відступ для кнопки Паузи. */
     display: flex;
     justify-content: space-between;
     font-size: 1.2rem;
     font-weight: bold;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    padding-right: 60px; /* 40px кнопка + 20px відступ */
 }
 
 .records-display {
@@ -62,7 +64,7 @@ canvas {
     text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
 }
 
-/* ДОДАНО: КНОПКА ПАУЗА/МЕНЮ */
+/* КНОПКА ПАУЗА/МЕНЮ */
 .pause-btn {
     position: absolute;
     top: 20px;
