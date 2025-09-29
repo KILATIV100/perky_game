@@ -21,7 +21,7 @@ const pauseBtn = document.getElementById('pauseBtn');
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
-const loadingScreen = document.getElementById('loadingScreen'); // ДОДАНО
+const loadingScreen = document.getElementById('loadingScreen');
 const tabContents = {
     play: document.getElementById('playTab'),
     shop: document.getElementById('shopTab'), 
@@ -269,7 +269,6 @@ function render() {
         ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40);
     }
 }
-// ВИПРАВЛЕНО: Повернено визначення функції renderPlatforms
 function renderPlatforms() {
     platforms.forEach(p => {
         if (p.isBreaking) ctx.globalAlpha = 0.5;
@@ -402,7 +401,7 @@ function startGame(mode) {
         // Стандартний фон для "Класичний", "На час" та "Екстремальний"
         canvas.style.background = 'linear-gradient(180deg, #87CEEB 0%, #98FB98 100%)';
     }
-    // --- КІНЕЦЬ ЛОГІКИ РЕЖИМІВ ---
+    // --- КІНЕЦЬ ЛОГІКИ РЕЖІМІВ ---
 
     // 1. Створення гравця
     player = {
@@ -862,21 +861,26 @@ async function initializeApp() {
     // --- ВИПРАВЛЕННЯ: РОЗГОРТАННЯ ЕКРАНА ---
     tg.ready();
     
-    // Імітація мінімальної затримки для провантаження UI, навіть якщо API швидке
+    // 1. Асинхронна затримка для UI та асетів
     const minDelayPromise = new Promise(resolve => setTimeout(resolve, 500)); // Мінімум 500 мс
-
-    // 1. Отримання даних користувача та оновлення статистики
-    let statsLoaded = false;
-    if (playerStats.user_id) {
-        try {
-            await fetchAndUpdateStats();
-            statsLoaded = true;
-        } catch (error) {
-            console.error("Не вдалося завантажити статистику:", error);
-        }
+    
+    // 2. Отримання даних користувача
+    await fetchAndUpdateStats(); 
+    
+    // 3. ЯВНЕ ЗАВАНТАЖЕННЯ АКТИВНОГО (ДЕФОЛТНОГО) СКІНА
+    const defaultSkinName = playerStats.active_skin;
+    if (defaultSkinName && !skinImages[defaultSkinName]) {
+        const img = new Image();
+        const loadPromise = new Promise(resolve => {
+            img.onload = resolve;
+            img.onerror = () => { console.error(`Failed to load default skin: ${defaultSkinName}`); resolve(); };
+        });
+        img.src = `/static/${defaultSkinName}`;
+        skinImages[defaultSkinName] = img;
+        await loadPromise;
     }
     
-    // 2. Чекаємо мінімальної затримки
+    // 4. Чекаємо завершення мінімальної затримки
     await minDelayPromise;
     
     tg.expand();
@@ -894,7 +898,7 @@ async function initializeApp() {
     updateStatsDisplayInMenu(); 
     loadLeaderboard(); 
     
-    // 3. ПРИХОВУЄМО LOADER ТА ПОКАЗУЄМО МЕНЮ
+    // 5. ПРИХОВУЄМО LOADER ТА ПОКАЗУЄМО МЕНЮ
     if (loadingScreen) {
         loadingScreen.style.display = 'none';
     }
