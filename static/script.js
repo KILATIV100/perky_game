@@ -17,7 +17,7 @@ const menuBtn = document.getElementById('menuBtn');
 const gyroToggle = document.getElementById('gyroToggle');
 const soundToggle = document.getElementById('soundToggle'); 
 const vibrationToggle = document.getElementById('vibrationToggle'); 
-const pauseBtn = document.getElementById('pauseBtn'); // ДОДАНО
+const pauseBtn = document.getElementById('pauseBtn'); 
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
@@ -152,7 +152,7 @@ function updateCamera() {
         camera.y += (targetY - camera.y) * 0.08 * gameSpeedMultiplier;
         
         // --- ФІНАЛЬНЕ ВИПРАВЛЕННЯ: КОЕФІЦІЄНТ ВИСОТИ ---
-        const initialPlayerY = canvas.height / 2 - 100; // Початкова позиція гравця
+        const initialPlayerY = canvas.height / 2 - 100; // Фіксована початкова Y гравця
         const conversion_rate = 100; // 100 ігрових одиниць = 1 метр
         const rawHeight = initialPlayerY - player.y; 
         
@@ -223,7 +223,7 @@ function checkCollisions() {
     });
 }
 function handlePlatformCollision(platform) {
-    if (player.isFallingAfterBounce) return; // Ігнорувати зіткнення відразу після відскоку
+    if (player.isFallingAfterBounce) return; // Ігнорувати зіткнення відразу після відскопу
 
     player.y = platform.y - player.height;
     player.vy = (platform.type === 'bouncy') ? -22 * Math.sqrt(gameSpeedMultiplier) : player.jumpPower; // Посилення стрибка для Bouncy
