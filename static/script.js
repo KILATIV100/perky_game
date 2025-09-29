@@ -1,7 +1,5 @@
 // Ініціалізація Telegram WebApp
 const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
 
 // DOM-елементи
 const canvas = document.getElementById('gameCanvas');
@@ -22,8 +20,7 @@ const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
 const tabContents = {
     play: document.getElementById('playTab'),
-    // ВИДАЛЕНО: progress: document.getElementById('progressTab'),
-    // ВИДАЛЕНО: social: document.getElementById('socialTab'),
+    // ВИДАЛЕНО: progress та social
     shop: document.getElementById('shopTab'), 
     settings: document.getElementById('settingsTab')
 };
@@ -200,8 +197,7 @@ function render() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.font = '24px Arial';
         ctx.textAlign = 'center';
-        // Потрібно відняти camera.y у функції
-        ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40); 
+        ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40);
     }
 }
 function renderPlayer() {
@@ -471,6 +467,9 @@ function updateRecordsDisplay() {
     bestHeightEl.textContent = `${playerStats.max_height}м`;
 }
 function setupEventListeners() {
+    // --- ВИПРАВЛЕННЯ 1: НЕПРАЦЮЮЧІ КНОПКИ ---
+    
+    // Обробники клавіш та дотиків без змін
     window.addEventListener('keydown', e => keys[e.code] = true);
     window.addEventListener('keyup', e => keys[e.code] = false);
 
@@ -479,10 +478,12 @@ function setupEventListeners() {
     rightBtn.addEventListener('touchstart', e => { e.preventDefault(); touchControls.right = true; });
     rightBtn.addEventListener('touchend', e => { e.preventDefault(); touchControls.right = false; });
     
+    // Обробники кнопок режимів гри без змін
     document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
         btn.addEventListener('click', () => startGame(btn.dataset.mode));
     });
     
+    // Обробники кнопок кінця гри без змін
     restartBtn.addEventListener('click', () => {
         gameOverScreen.style.display = 'none';
         startGame(gameMode);
@@ -493,21 +494,27 @@ function setupEventListeners() {
         menuScreen.style.display = 'flex';
     });
 
+    // Обробники кнопок меню (ОНОВЛЕНО для 3 вкладок)
     menuTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const activeTab = tab.dataset.tab;
+            
+            // Логіка перемикання вкладок
             menuTabs.forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.menu-section').forEach(s => s.classList.remove('active'));
             tab.classList.add('active');
-            tabContents[activeTab].classList.add('active');
             
-            // ОНОВЛЕНО: Запуск функцій для нової структури меню
+            // Вкладка "Гра" містить все, включаючи статистику і рейтинг
             if (activeTab === 'play') { 
-                updateStatsDisplayInMenu(); // Потрібно оновити статистику та рейтинг, оскільки вони тепер на цій вкладці
-                loadLeaderboard(); 
+                document.getElementById('playTab').classList.add('active'); // Активація контейнера
+                updateStatsDisplayInMenu(); // Оновлення статистики
+                loadLeaderboard(); // Завантаження рейтингу
+            } else if (activeTab === 'shop') {
+                document.getElementById('shopTab').classList.add('active'); // Активація контейнера
+                loadShop(); 
+            } else if (activeTab === 'settings') {
+                document.getElementById('settingsTab').classList.add('active'); // Активація контейнера
             }
-            if (activeTab === 'shop') loadShop(); 
-            // ВИДАЛЕНО: 'social' та 'progress' окремих вкладок більше немає
         });
     });
     
@@ -524,7 +531,6 @@ function setupEventListeners() {
 function updateStatsDisplayInMenu() {
     // ОНОВЛЕНО: Функція використовує елементи, які тепер знаходяться у 'playTab'
     const grid = document.getElementById('statsGrid'); 
-    const leaderboardContent = document.getElementById('leaderboardContent'); 
     
     // ОНОВЛЕНО: Відображення активного скіна
     grid.innerHTML = `
@@ -532,11 +538,6 @@ function updateStatsDisplayInMenu() {
         <div>☕ Всього зерен: <span>${playerStats.total_beans}</span></div>
         <div>🎮 Ігор зіграно: <span>${playerStats.games_played}</span></div>
         <div>🤖 Активний скін: <span>${playerStats.active_skin || 'default'}</span></div>`;
-        
-    // ОНОВЛЕНО: Переконаємося, що рейтинг також завантажується
-    if (leaderboardContent.innerHTML === '') {
-        loadLeaderboard();
-    }
 }
 async function loadLeaderboard() {
     const content = document.getElementById('leaderboardContent');
@@ -679,12 +680,21 @@ function vibrate(duration) {
 
 // --- ПОЧАТКОВИЙ ЗАПУСК ---
 async function initializeApp() {
+    // --- ВИПРАВЛЕННЯ 2: РОЗГОРТАННЯ ЕКРАНА ---
+    tg.ready();
+    await fetchAndUpdateStats(); 
+    tg.expand();
+    // ----------------------------------------
+    
     resizeCanvas();
     setupEventListeners();
     updateGyroToggleUI();
     
-    await fetchAndUpdateStats(); 
+    if (gameSettings.gyro) requestGyroPermission(); 
     
-    if (gameSettings.gyro) requestGyroPermission(); // Запит дозволу після завантаження скіна
-    
-    updateStatsDisplayInMenu(); // Початкове завантаження контенту вклад
+    // ОНОВЛЕНО: Завантаження контенту вкладки "Гра" при запуску
+    updateStatsDisplayInMenu(); 
+    loadLeaderboard(); 
+}
+
+initializeApp();
