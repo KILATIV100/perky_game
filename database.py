@@ -34,7 +34,7 @@ class Database:
                         games_played INTEGER DEFAULT 0,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         last_played TIMESTAMP,
-                        active_skin_id INTEGER DEFAULT 1
+                        active_skin_id INTEGER DEFAULT 1 -- Додано поле для активного скіна (Default = ID 1)
                     )
                 ''')
                 # Таблиця ігор
