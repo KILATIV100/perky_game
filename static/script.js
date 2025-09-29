@@ -253,7 +253,7 @@ function render() {
     ctx.save();
     ctx.translate(0, -camera.y);
     renderClouds();
-    renderPlatforms();
+    renderPlatforms(); // ВИПРАВЛЕНО: Функція тепер існує
     renderCoffees();
     renderEnemies(); 
     renderPlayer(); 
@@ -267,6 +267,15 @@ function render() {
         ctx.textAlign = 'center';
         ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40);
     }
+}
+// ВИПРАВЛЕНО: Повернено визначення функції renderPlatforms
+function renderPlatforms() {
+    platforms.forEach(p => {
+        if (p.isBreaking) ctx.globalAlpha = 0.5;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+        ctx.globalAlpha = 1.0;
+    });
 }
 function renderPlayer() {
     const skinName = playerStats.active_skin; // напр., 'default_robot.svg'
@@ -283,7 +292,6 @@ function renderPlayer() {
     }
 
     // 2. Якщо SVG не завантажено, використовуємо тимчасову заглушку (квадрат)
-    // ВИПРАВЛЕНО: Використовуємо заглушку, щоб гравець був видимий
     let color = '#8B4513'; // Default Robot
     let eyeColor = '#FFD700';
     
@@ -398,7 +406,7 @@ function startGame(mode) {
     // 1. Створення гравця
     player = {
         x: canvas.width / 2 - 15, 
-        y: canvas.height - 100, // Використовуємо робочі координати
+        y: canvas.height - 100, // ВИКОРИСТАННЯ РОБОЧИХ КООРДИНАТ ГРАВЦЯ
         width: 30, height: 30, vx: 0, vy: 0,
         speed: 5, jumpPower: -13, gravity: 0.45,
         isFallingAfterBounce: false
