@@ -17,6 +17,7 @@ const menuBtn = document.getElementById('menuBtn');
 const gyroToggle = document.getElementById('gyroToggle');
 const soundToggle = document.getElementById('soundToggle'); 
 const vibrationToggle = document.getElementById('vibrationToggle'); 
+const pauseBtn = document.getElementById('pauseBtn'); // ДОДАНО
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
@@ -151,9 +152,9 @@ function updateCamera() {
         camera.y += (targetY - camera.y) * 0.08 * gameSpeedMultiplier;
         
         // --- ФІНАЛЬНЕ ВИПРАВЛЕННЯ: КОЕФІЦІЄНТ ВИСОТИ ---
-        // Припускаємо, що 100 ігрових одиниць = 1 метр.
-        const conversion_rate = 100;
-        const rawHeight = -player.y + (canvas.height - 150); // Відстань від стартової позиції
+        const initialPlayerY = canvas.height / 2 - 100; // Початкова позиція гравця
+        const conversion_rate = 100; // 100 ігрових одиниць = 1 метр
+        const rawHeight = initialPlayerY - player.y; 
         
         const newHeight = Math.max(0, Math.floor(rawHeight / conversion_rate)); 
         
@@ -349,8 +350,10 @@ function renderClouds() {
 }
 function renderParticles() {
     particles.forEach(p => {
-        p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life--;
-        return p.life > 0;
+        ctx.globalAlpha = p.life / 20;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 3, 3);
+        ctx.globalAlpha = 1.0;
     });
 }
 
@@ -367,7 +370,6 @@ function startGame(mode) {
     // --- ЛОГІКА РЕЖИМІВ ГРИ ---
     if (mode === 'timed') {
         gameSpeedMultiplier = 2; // Прискорення x2 для "На час"
-        gameTimer = 60; // Встановлюємо таймер на 60 секунд
         const timerInterval = setInterval(() => {
             if (gameState !== 'playing') clearInterval(timerInterval);
             gameTimer--;
@@ -411,6 +413,7 @@ function startGame(mode) {
     menuScreen.style.display = 'none';
     gameOverScreen.style.display = 'none'; 
     controls.style.display = (gameSettings.gyro ? 'none' : 'flex');
+    pauseBtn.style.display = 'block'; // Показати кнопку паузи
     updateGameUI();
 
     if (animationId) cancelAnimationFrame(animationId);
@@ -420,6 +423,7 @@ async function endGame() {
     gameState = 'gameOver';
     cancelAnimationFrame(animationId);
     controls.style.display = 'none';
+    pauseBtn.style.display = 'none'; // Сховати кнопку паузи
     
     if (gameTimer) clearInterval(gameTimer); // Зупиняємо таймер
     
@@ -588,6 +592,15 @@ function updateGameUI() {
 function updateRecordsDisplay() {
     bestHeightEl.textContent = `${playerStats.max_height}м`;
 }
+function goToMenu() {
+    // Функція паузи та повернення в меню
+    gameState = 'menu';
+    cancelAnimationFrame(animationId);
+    controls.style.display = 'none';
+    pauseBtn.style.display = 'none';
+    menuScreen.style.display = 'flex';
+}
+
 function setupEventListeners() {
     // Обробники клавіш та дотиків без змін
     window.addEventListener('keydown', e => keys[e.code] = true);
@@ -613,6 +626,12 @@ function setupEventListeners() {
         gameOverScreen.style.display = 'none';
         menuScreen.style.display = 'flex';
     });
+    
+    // --- ДОДАНО: ОБРОБНИК КНОПКИ ПАУЗИ ---
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', goToMenu);
+    }
+    // ------------------------------------
 
     // --- ДОДАНО: ОБРОБНИКИ НАЛАШТУВАНЬ ---
     if (soundToggle) {
@@ -825,7 +844,7 @@ function vibrate(duration) {
 
 // --- ПОЧАТКОВИЙ ЗАПУСК ---
 async function initializeApp() {
-    // --- ВИПРАВЛЕННЯ 2: РОЗГОРТАННЯ ЕКРАНА ---
+    // --- ВИПРАВЛЕННЯ: РОЗГОРТАННЯ ЕКРАНА ---
     tg.ready();
     await fetchAndUpdateStats(); 
     tg.expand();
