@@ -16,7 +16,6 @@
             <div class="score-display">
                 <div>☕ <span id="coffeeCount">0</span></div>
                 <div>📏 <span id="heightScore">0</span>m</div>
-                <div id="timeDisplay" style="display: none;">⏱️ <span id="timeLeft">60</span>s</div>
             </div>
             <div class="records-display" id="recordsDisplay">
                 <div>🏆 Рекорд: <span id="bestHeight">0</span>м</div>
@@ -24,7 +23,7 @@
         </div>
 
         <!-- Кнопки керування -->
-        <div class="controls">
+        <div class="controls" style="display: none;">
             <button class="control-btn" id="leftBtn">←</button>
             <button class="control-btn" id="rightBtn">→</button>
         </div>
@@ -43,43 +42,40 @@
                     <button class="menu-tab" data-tab="settings">⚙️ Налаштування</button>
                 </div>
 
-                <!-- Вкладка "Гра" -->
-                <div class="menu-section active" id="playTab">
-                    <div class="section-header"><span>🎯 Режими гри</span></div>
-                    <div class="mode-buttons">
-                        <button class="mode-btn" data-mode="classic">Класичний</button>
-                        <button class="mode-btn" data-mode="timed">На час (60с)</button>
-                        <button class="mode-btn" data-mode="night">Нічний</button>
-                        <button class="mode-btn" data-mode="extreme">Екстремальний</button>
+                <div class="menu-section-container">
+                    <!-- Вкладка "Гра" -->
+                    <div class="menu-section active" id="playTab">
+                        <div class="section-header"><span>🎯 Режими гри</span></div>
+                        <div class="mode-buttons">
+                            <button class="mode-btn" data-mode="classic">Класичний</button>
+                            <button class="mode-btn" data-mode="timed">На час (60с)</button>
+                            <button class="mode-btn" data-mode="night">Нічний</button>
+                            <button class="mode-btn" data-mode="extreme">Екстремальний</button>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Вкладка "Прогрес" -->
-                <div class="menu-section" id="progressTab" style="display: none;">
-                    <div class="section-header"><span>📊 Ваша статистика</span></div>
-                    <div id="statsGrid" class="stats-grid"></div>
-                    <div class="section-header"><span>🛒 Магазин</span></div>
-                     <div class="mode-buttons">
-                        <button class="mode-btn" id="shopBtn">Магазин прокачки</button>
-                        <button class="mode-btn" id="customizeBtn">Кастомізація</button>
+                    <!-- Вкладка "Прогрес" -->
+                    <div class="menu-section" id="progressTab">
+                        <div class="section-header"><span>📊 Ваша статистика</span></div>
+                        <div id="statsGrid" class="stats-grid"></div>
                     </div>
-                </div>
 
-                <!-- Вкладка "Рейтинг" -->
-                <div class="menu-section" id="socialTab" style="display: none;">
-                    <div class="section-header"><span>🏆 Загальний рейтинг</span></div>
-                    <div id="leaderboardContent" class="scrollable-content"></div>
-                </div>
-                
-                <!-- Вкладка "Налаштування" -->
-                <div class="menu-section" id="settingsTab" style="display: none;">
-                     <div class="section-header"><span>⚙️ Налаштування</span></div>
-                     <div class="settings-grid">
-                         <div class="setting-item">
-                             <span>Гіроскоп</span>
-                             <div class="toggle-switch" id="gyroToggle"></div>
+                    <!-- Вкладка "Рейтинг" -->
+                    <div class="menu-section" id="socialTab">
+                        <div class="section-header"><span>🏆 Загальний рейтинг</span></div>
+                        <div id="leaderboardContent" class="scrollable-content"></div>
+                    </div>
+                    
+                    <!-- Вкладка "Налаштування" -->
+                    <div class="menu-section" id="settingsTab">
+                         <div class="section-header"><span>⚙️ Налаштування</span></div>
+                         <div class="settings-grid">
+                             <div class="setting-item">
+                                 <span>Гіроскоп</span>
+                                 <div class="toggle-switch" id="gyroToggle"></div>
+                             </div>
                          </div>
-                     </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -92,7 +88,7 @@
                 <div>☕ Зібрано: <span id="finalCoffee">0</span></div>
             </div>
             <button class="restart-btn" id="restartBtn">🔄 Грати знову</button>
-            <button class="restart-btn" id="menuBtn">📋 Головне меню</button>
+            <button class="restart-btn menu-btn" id="menuBtn">📋 Головне меню</button>
         </div>
         
         <!-- Спливаюче вікно для бонусів -->
