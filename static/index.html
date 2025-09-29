@@ -4,18 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>🤖☕ Perky Coffee Jump</title>
-    <!-- Підключення стилів -->
-    <link rel="stylesheet" href="/static/style.css">
-    <!-- Скрипт Telegram Web App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <!-- Головний контейнер гри -->
     <div class="game-container">
-        <!-- Ігрове поле -->
         <canvas id="gameCanvas"></canvas>
         
-        <!-- Інтерфейс поверх гри -->
         <div class="ui-overlay">
             <div class="score-display">
                 <div>☕ <span id="coffeeCount">0</span></div>
@@ -24,85 +19,102 @@
             </div>
             <div class="records-display" id="recordsDisplay">
                 <div>🏆 Рекорд: <span id="bestHeight">0</span>м</div>
-                <div>☕ Зерен за гру: <span id="bestCoffee">0</span></div>
+                <div>☕ Макс зерен: <span id="bestCoffee">0</span></div>
             </div>
             <div class="powerup-indicator" id="powerupIndicator"></div>
         </div>
 
-        <!-- Кнопки керування -->
         <div class="controls">
             <button class="control-btn" id="leftBtn">←</button>
             <button class="control-btn" id="rightBtn">→</button>
         </div>
 
-        <!-- Головне меню -->
         <div class="menu-screen" id="menuScreen">
             <div class="menu-header">
-                <h1 class="game-title">🤖☕ Perky Coffee Jump</h1>
+                <div class="game-title">🤖☕ Perky Coffee Jump</div>
             </div>
             
             <div class="menu-content">
                 <div class="menu-tabs">
                     <button class="menu-tab active" data-tab="play">🎮 Гра</button>
                     <button class="menu-tab" data-tab="progress">📊 Прогрес</button>
-                    <button class="menu-tab" data-tab="social">🏆 Рейтинг</button>
+                    <button class="menu-tab" data-tab="social">👥 Рейтинг</button>
                     <button class="menu-tab" data-tab="settings">⚙️ Налаштування</button>
                 </div>
 
-                <!-- Вкладка "Гра" -->
-                <div class="menu-section active-tab" id="playTab">
+                <!-- Play Tab -->
+                <div class="menu-section active-tab-content" id="playTab">
                     <div class="section-header">
                         <span><span class="section-icon">🎯</span>Режими гри</span>
                     </div>
                     <div class="mode-buttons">
                         <button class="mode-btn" data-mode="classic">
-                            <span class="btn-icon">🎯</span>
-                            <span class="btn-text">Класичний<br>режим</span>
+                            <div class="btn-icon">🎯</div>
+                            <div class="btn-text">Класичний<br>режим</div>
                         </button>
                         <button class="mode-btn" data-mode="timed">
-                            <span class="btn-icon">⏱️</span>
-                            <span class="btn-text">На час<br>(60с)</span>
+                            <div class="btn-icon">⏱️</div>
+                            <div class="btn-text">На час<br>(60с)</div>
+                        </button>
+                        <button class="mode-btn" data-mode="night">
+                            <div class="btn-icon">🌙</div>
+                            <div class="btn-text">Нічний<br>режим</div>
+                        </button>
+                        <button class="mode-btn" data-mode="extreme">
+                            <div class="btn-icon">🔥</div>
+                            <div class="btn-text">Екстремальний<br>режим</div>
                         </button>
                     </div>
                 </div>
 
-                <!-- Вкладка "Прогрес" -->
-                <div class="menu-section" id="progressTab" style="display: none;">
+                <!-- Progress Tab -->
+                <div class="menu-section" id="progressTab">
                     <div class="section-header">
-                        <span><span class="section-icon">📊</span>Ваша статистика</span>
+                        <span><span class="section-icon">📊</span>Статистика</span>
                     </div>
                     <div class="scrollable-content">
                         <div class="stats-grid" id="statsGrid">
-                             <!-- Статистика буде завантажена динамічно -->
+                            <!-- Stats will be loaded here by script.js -->
                         </div>
                     </div>
-                     <div class="section-header" style="margin-top: 20px;">
+                    
+                    <div class="section-header shop-header">
                         <span><span class="section-icon">🛒</span>Магазин</span>
                     </div>
                     <div class="mode-buttons">
                         <button class="mode-btn" id="shopBtn">
-                            <span class="btn-icon">🛒</span>
-                            <span class="btn-text">Магазин<br>прокачки</span>
+                            <div class="btn-icon">🛒</div>
+                            <div class="btn-text">Магазин<br>прокачки</div>
                         </button>
                         <button class="mode-btn" id="customizeBtn">
-                            <span class="btn-icon">🎨</span>
-                            <span class="btn-text">Кастомізація<br>Перкі</span>
+                            <div class="btn-icon">🎨</div>
+                            <div class="btn-text">Кастомізація<br>Перкі</div>
+                        </button>
+                    </div>
+                    
+                    <div class="section-header challenges-header">
+                        <span><span class="section-icon">🎯</span>Завдання</span>
+                    </div>
+                    <div class="mode-buttons">
+                        <button class="mode-btn" id="challengesBtn">
+                            <div class="btn-icon">🎯</div>
+                            <div class="btn-text">Завдання та<br>досягнення</div>
                         </button>
                     </div>
                 </div>
 
-                <!-- Вкладка "Рейтинг" -->
-                <div class="menu-section" id="socialTab" style="display: none;">
+                <!-- Social Tab -->
+                <div class="menu-section" id="socialTab">
                     <div class="section-header">
-                        <span><span class="section-icon">🏆</span>Таблиця лідерів</span>
+                        <span><span class="section-icon">🏆</span>Загальний рейтинг</span>
                     </div>
-                    <div class="scrollable-content" id="leaderboardContent">
-                        <!-- Рейтинг буде завантажено динамічно -->
+                    <div id="leaderboardContent" class="scrollable-content">
+                        <!-- Leaderboard will be loaded here -->
                     </div>
                 </div>
-                
-                <!-- Вкладка "Налаштування" -->
-                <div class="menu-section" id="settingsTab" style="display: none;">
+
+                <!-- Settings Tab -->
+                <div class="menu-section" id="settingsTab">
                     <div class="section-header">
                         <span><span class="section-icon">⚙️</span>Налаштування гри</span>
                     </div>
@@ -115,83 +127,27 @@
                                 </div>
                                 <div class="toggle-switch" id="gyroToggle"></div>
                             </div>
-                            <div class="setting-item">
-                                <div class="setting-label">
-                                    <span>📳</span>
-                                    <span>Вібрація</span>
-                                </div>
-                                <div class="toggle-switch active" id="vibrationToggle"></div>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Екран завершення гри -->
         <div class="game-over-screen" id="gameOverScreen">
-            <h2 class="game-over-title">Гра завершена!</h2>
+            <div class="game-over-title">Гра завершена!</div>
             <div class="final-score">
                 <div>☕ Зібрано: <span id="finalCoffee">0</span></div>
-                <div>📏 Висота: <span id="finalHeight">0</span></div>
-                <div id="finalTime" style="display: none;">⏱️ Час: <span id="timeSpent">0</span>с</div>
+                <div>📏 Висота: <span id="finalHeight">0</span>м</div>
             </div>
             <button class="restart-btn" id="restartBtn">🔄 Грати знову</button>
-            <button class="restart-btn" id="menuBtn" style="background: #95a5a6; margin-top: 10px;">📋 Головне меню</button>
+            <button class="restart-btn" id="menuBtn">📋 Головне меню</button>
         </div>
         
-        <!-- Спливаюче вікно з бонусом -->
         <div class="bonus-popup" id="bonusPopup">
-            <div class="bonus-title" id="bonusTitle">🎁 Бонус отримано!</div>
-            <div id="bonusContent"></div>
-            <div class="bonus-instruction" id="bonusInstruction"></div>
-            <div class="bonus-timer" id="bonusTimer"></div>
-            <button class="close-bonus" id="closeBonusBtn">Закрити</button>
-        </div>
-
-        <!-- Екран магазину -->
-        <div class="menu-screen" id="shopScreen" style="display: none;">
-            <div class="menu-header">
-                <h1 class="game-title">🛒 Магазин прокачки</h1>
-                <div class="coins-display">☕ Зерен: <span id="shopCoins">0</span></div>
-            </div>
-            <div class="menu-content">
-                <div class="scrollable-content">
-                    <div class="shop-grid" id="shopGrid">
-                        <!-- Товари будуть додані динамічно -->
-                    </div>
-                </div>
-                <button class="mode-btn" id="shopBackBtn" style="margin-top: 20px;">
-                    <span class="btn-icon">⬅️</span>
-                    <span class="btn-text">Назад до меню</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Екран кастомізації -->
-        <div class="menu-screen" id="customizeScreen" style="display: none;">
-             <div class="menu-header">
-                <h1 class="game-title">🎨 Кастомізація Перкі</h1>
-                <div class="coins-display">☕ Зерен: <span id="customizeCoins">0</span></div>
-            </div>
-            <div class="menu-content">
-                <div class="scrollable-content">
-                    <div class="customize-section">
-                        <div class="section-title">🎨 Скіни</div>
-                        <div class="customize-grid" id="skinsGrid">
-                            <!-- Скіни будуть додані динамічно -->
-                        </div>
-                    </div>
-                </div>
-                 <button class="mode-btn" id="customizeBackBtn" style="margin-top: 20px;">
-                    <span class="btn-icon">⬅️</span>
-                    <span class="btn-text">Назад</span>
-                </button>
-            </div>
+            <!-- Bonus content will be injected here -->
         </div>
     </div>
 
-    <!-- Підключення скриптів гри -->
     <script src="/static/script.js"></script>
 </body>
 </html>
