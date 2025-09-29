@@ -154,9 +154,10 @@ function updateCamera() {
         // ОНОВЛЕНО: камера рухається швидше з множником
         camera.y += (targetY - camera.y) * 0.08 * gameSpeedMultiplier;
         
-        // --- ФІНАЛЬНЕ ВИПРАВЛЕННЯ: КОЕФІЦІЄНТ ВИСОТИ ---
+        // --- ВИПРАВЛЕНО: КОЕФІЦІЄНТ ВИСОТИ ---
+        const initialPlayerY = INITIAL_PLAYER_Y; // Використовуємо збережену початкову Y
         const conversion_rate = 100; // 100 ігрових одиниць = 1 метр
-        const rawHeight = INITIAL_PLAYER_Y - player.y; 
+        const rawHeight = initialPlayerY - player.y; 
         
         const newHeight = Math.max(0, Math.floor(rawHeight / conversion_rate)); 
         
@@ -228,7 +229,7 @@ function handlePlatformCollision(platform) {
     if (player.isFallingAfterBounce) return; // Ігнорувати зіткнення відразу після відскопу
 
     player.y = platform.y - player.height;
-    const jumpPower = (platform.type === 'bouncy') ? -22 * Math.sqrt(gameSpeedMultiplier) : player.jumpPower; 
+    const jumpPower = (platform.type === 'bouncy') ? -22 * Math.sqrt(gameSpeedMultiplier) : player.jumpPower; // Посилення стрибка для Bouncy
     player.vy = jumpPower;
     
     if (platform.type === 'bouncy') {
@@ -304,7 +305,6 @@ function renderPlayer() {
 }
 
 function renderCoffees() {
-    // --- ОНОВЛЕНО: Рендеринг SVG зернятка ---
     const coffeeImg = assets.coffeeBean;
     
     coffees.forEach(c => {
@@ -397,16 +397,15 @@ function startGame(mode) {
 
     // 1. Створення гравця
     player = {
-        // ВИКОРИСТАННЯ РОБОЧИХ КООРДИНАТ ГРАВЦЯ
         x: canvas.width / 2 - 15, 
-        y: canvas.height - 100, // ВАШ РОБОЧИЙ КОД: Починаємо від низу
+        y: canvas.height - 100, // Використовуємо робочі координати
         width: 30, height: 30, vx: 0, vy: 0,
         speed: 5, jumpPower: -13, gravity: 0.45,
         isFallingAfterBounce: false
     };
     
     // ВСТАНОВЛЕННЯ ПОЧАТКОВОЇ Y-КООРДИНАТИ ДЛЯ ТОЧНОГО РОЗРАХУНКУ МЕТРІВ
-    INITIAL_PLAYER_Y = player.y; // Зберігаємо Y-координату старту
+    INITIAL_PLAYER_Y = player.y; 
     
     // 2. Ініціалізація камери (ВАЖЛИВО)
     camera = { 
@@ -503,7 +502,6 @@ function hideBonusPopup() {
 
 // --- ГЕНЕРАЦІЯ ОБ'ЄКТІВ ---
 function generateInitialPlatforms() {
-    // ВАШ РОБОЧИЙ КОД
     platforms.push({ x: canvas.width / 2 - 40, y: canvas.height - 50, width: 80, height: 15, type: 'normal', color: '#A0522D' });
     for (let i = 0; i < 20; i++) generatePlatform();
 }
@@ -777,4 +775,98 @@ async function loadShop() {
             // Додаємо обробники для кнопок
             shopContentElement.querySelectorAll('.skin-btn').forEach(btn => {
                 if (btn.dataset.id) {
-                    btn.addEventListener('click', () => handleSkinAction(parseInt(btn.dataset.id), btn.dataset.
+                    btn.addEventListener('click', () => handleSkinAction(parseInt(btn.dataset.id), btn.dataset.action));
+                }
+            });
+            
+        } else {
+            shopContentElement.innerHTML = '<p>Магазин поки порожній.</p>';
+        }
+    } catch (error) { 
+        console.error("Помилка завантаження магазину:", error);
+        shopContentElement.innerHTML = '<p>Не вдалося завантажити магазин.</p>'; 
+    }
+}
+
+async function handleSkinAction(skin_id, action_type) {
+    if (!playerStats.user_id) return;
+    
+    try {
+        const response = await fetch('/skin_action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: playerStats.user_id,
+                skin_id: skin_id,
+                action_type: action_type
+            })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            tg.showPopup({ message: data.message });
+            // Оновлюємо статистику користувача та магазин
+            await fetchAndUpdateStats();
+            // Якщо активовано, оновлюємо активний скін в грі
+            if (action_type === 'activate' && data.active_skin) {
+                 playerStats.active_skin = data.active_skin;
+            }
+            await loadShop();
+        } else {
+            tg.showAlert(`Помилка: ${data.detail || data.message}`);
+        }
+    } catch (error) {
+        console.error("Помилка дії зі скіном:", error);
+        tg.showAlert("Помилка зв'язку з сервером.");
+    }
+}
+
+async function fetchAndUpdateStats() {
+    if (playerStats.user_id) {
+        try {
+            const response = await fetch(`/stats/${playerStats.user_id}`);
+            const data = await response.json();
+            if (data.success) {
+                playerStats = { ...playerStats, ...data.stats };
+                // Оновлення активного скіна, отриманого з БД
+                if (data.stats.active_skin) playerStats.active_skin = data.stats.active_skin; 
+            }
+        } catch (error) {
+            console.error("Не вдалося оновити статистику:", error);
+        }
+    }
+    updateRecordsDisplay();
+    // Оновлення балансу в UI, якщо потрібно
+    const userTotalBeansEl = document.getElementById('userTotalBeans');
+    if (userTotalBeansEl) userTotalBeansEl.textContent = playerStats.total_beans;
+}
+// --- КІНЕЦЬ НОВОЇ ФУНКЦІОНАЛЬНОСТІ МАГАЗИНУ ---
+
+function vibrate(duration) {
+    if (gameSettings.vibration && 'vibrate' in navigator) { // ОНОВЛЕНО: Перевірка налаштувань
+        navigator.vibrate(duration);
+    }
+}
+
+// --- ПОЧАТКОВИЙ ЗАПУСК ---
+async function initializeApp() {
+    // --- ВИПРАВЛЕННЯ: РОЗГОРТАННЯ ЕКРАНА ---
+    tg.ready();
+    await fetchAndUpdateStats(); 
+    tg.expand();
+    // ----------------------------------------
+    
+    resizeCanvas();
+    setupEventListeners();
+    updateGyroToggleUI();
+    updateSoundToggleUI();     // ОНОВЛЕНО
+    updateVibrationToggleUI(); // ОНОВЛЕНО
+    
+    if (gameSettings.gyro) requestGyroPermission(); 
+    
+    // ОНОВЛЕНО: Завантаження контенту вкладки "Гра" при запуску
+    updateStatsDisplayInMenu(); 
+    loadLeaderboard(); 
+}
+
+initializeApp();
