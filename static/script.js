@@ -21,8 +21,6 @@ const pauseBtn = document.getElementById('pauseBtn');
 const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
-// ДОДАНО: Для управління екраном завантаження
-const loadingScreen = document.getElementById('loadingScreen'); 
 const tabContents = {
     play: document.getElementById('playTab'),
     shop: document.getElementById('shopTab'), 
@@ -270,7 +268,6 @@ function render() {
         ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40);
     }
 }
-// ВИПРАВЛЕНО: Повернено визначення функції renderPlatforms
 function renderPlatforms() {
     platforms.forEach(p => {
         if (p.isBreaking) ctx.globalAlpha = 0.5;
@@ -332,7 +329,7 @@ function renderCoffees() {
 }
 function renderEnemies() {
     enemies.forEach(e => {
-        const img = (e.type === 'virus') ? assets.enemyVirus : assets.enemyBug;
+        const img = (e.type === 'virus') ? assets.enemyVirus : assets.bugImage;
         if (img.complete) {
             ctx.drawImage(img, e.x, e.y, e.width, e.height);
         } else {
