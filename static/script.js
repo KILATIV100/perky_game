@@ -393,34 +393,58 @@ function hideBonusPopup() {
     if (bonusTimer) clearInterval(bonusTimer);
 }
 
+// kilativ100/perky_game/perky_game-main/static/script.js
+
+// ... (частина коду без змін)
+
+// --- ЛОГІКА ГРИ ---
+// ... (функції update, render та інші без змін)
+
+// ...
+
 // --- ГЕНЕРАЦІЯ ОБ'ЄКТІВ ---
 function generateInitialPlatforms() {
     platforms.push({ x: canvas.width / 2 - 40, y: canvas.height - 50, width: 80, height: 15, type: 'normal', color: '#A0522D' });
     for (let i = 0; i < 20; i++) generatePlatform();
 }
+
 function generatePlatform() {
     const lastPlatform = platforms[platforms.length - 1];
     const y = lastPlatform.y - (60 + Math.random() * 70);
     const x = Math.random() * (canvas.width - 80);
     
     let type = 'normal', color = '#A0522D';
-    let rand = Math.random();
-    
-    // --- ПРОГРЕСИВНА СКЛАДНІСТЬ (ПЕРЕШКОДИ З'ЯВЛЯЮТЬСЯ З 5 РІВНЯ / 500М) ---
-    const difficultyMultiplier = Math.min(1, Math.floor(currentHeight / 500) * 0.2 + 1);
-    
-    // Шанси збільшуються з висотою
-    const bouncyChance = 0.10 * difficultyMultiplier;
-    const fragileChance = 0.08 * difficultyMultiplier;
+    const rand = Math.random();
 
-    if (rand < bouncyChance) { 
+    // --- ЛОГІКА ПРОГРЕСИВНОЇ СКЛАДНОСТІ (НОВА ЛОГІКА) ---
+    
+    // Початкові шанси (висота < 500м)
+    let bouncy_chance = 0.10; // 10%
+    let fragile_chance = 0.08; // 8%
+
+    // Рівень складності 1: Вище 500м
+    if (currentHeight >= 500) {
+        bouncy_chance = 0.15; // 15%
+        fragile_chance = 0.15; // 15%
+    }
+    
+    // Рівень складності 2: Вище 1500м
+    if (currentHeight >= 1500) {
+        bouncy_chance = 0.20; // 20%
+        fragile_chance = 0.25; // 25% (особливо небезпечні)
+    }
+
+    // Визначення типу платформи на основі змінених шансів
+    if (rand < bouncy_chance) { 
         type = 'bouncy'; 
         color = '#2ECC71'; 
-    } else if (rand < bouncyChance + fragileChance) { 
+    } else if (rand < (bouncy_chance + fragile_chance)) { 
         type = 'fragile'; 
         color = '#E74C3C'; 
     }
-    // --- КІНЕЦЬ ПРОГРЕСИВНОЇ СКЛАДНОСТІ ---
+    // В іншому випадку залишається 'normal'
+    
+    // --- КІНЕЦЬ ЛОГІКИ ПРОГРЕСИВНОЇ СКЛАДНОСТІ ---
     
     platforms.push({ x, y, width: 80, height: 15, type, color });
 
@@ -428,30 +452,9 @@ function generatePlatform() {
         coffees.push({ x: x + 40, y: y - 20 });
     }
 }
-function generateClouds() {
-    clouds = [];
-    for (let i = 0; i < 5; i++) {
-        clouds.push({
-            x: Math.random() * canvas.width, y: camera.y + Math.random() * canvas.height,
-            size: 20 + Math.random() * 20, speed: 0.2 + Math.random() * 0.3
-        });
-    }
-}
-function createParticles(x, y, color, count = 10) {
-    for (let i = 0; i < count; i++) {
-        particles.push({
-            x, y,
-            vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
-            life: 20, color
-        });
-    }
-}
 
-// --- UI ТА ОБРОБНИКИ ПОДІЙ ---
-function updateGameUI() {
-    heightScoreEl.textContent = `${Math.floor(currentHeight)}м`;
-    coffeeCountEl.textContent = `☕ ${currentCoffeeCount}`;
-    
+// ... (решта файлу без змін)
+
     // Оновлення таймера в UI під час гри
     if (gameMode === 'timed' && gameTimer !== null) {
         heightScoreEl.textContent = `🕒 ${gameTimer.toString().padStart(2, '0')}с`;
