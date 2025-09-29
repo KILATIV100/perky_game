@@ -112,6 +112,17 @@ canvas {
     text-align: center;
     margin-bottom: 10px;
     padding-top: 10px;
+    
+    /* ДОДАНО: Центрування елементів в заголовку */
+    display: flex;
+    flex-direction: column; /* Щоб логотип був над заголовком */
+    align-items: center;
+}
+
+.game-logo {
+    width: 60px;   /* ДОДАНО: Розмір логотипу */
+    height: 60px;
+    margin-bottom: 5px; /* ДОДАНО: Відступ між логотипом та текстом */
 }
 
 .game-title {
@@ -131,27 +142,26 @@ canvas {
     padding: 5px;
     margin-bottom: 15px;
     
-    /* --- ВИПРАВЛЕННЯ ДЛЯ 3 ВКЛАДОК --- */
-    overflow-x: hidden; /* Скрол більше не потрібен */
-    justify-content: space-between; /* Рівномірний розподіл */
-    /* ---------------------------------- */
+    /* ВИПРАВЛЕННЯ ДЛЯ 3 ВКЛАДОК */
+    overflow-x: hidden; 
+    justify-content: space-between; 
 }
 
 .menu-tab {
-    flex: 1; /* Рівномірно розподіляємо місце */
-    min-width: 0; /* Видаляємо min-width, оскільки flex:1 все вирівняє */
-    padding: 8px 5px; /* Зменшення відступів, щоб вмістити довгі назви */
+    flex: 1; 
+    min-width: 0; 
+    padding: 8px 5px; 
     margin-right: 0; 
     border: none;
     background: transparent;
     color: rgba(255,255,255,0.7);
     border-radius: 10px;
     cursor: pointer;
-    font-size: 0.8rem; /* Зменшення розміру шрифту */
+    font-size: 0.8rem; 
     font-weight: bold;
     transition: background 0.3s;
     text-align: center;
-    white-space: normal; /* Дозволяємо перенос тексту, якщо назва занадто довга */
+    white-space: normal; 
 }
 .menu-tab.active {
     background: rgba(255,255,255,0.2);
@@ -162,7 +172,7 @@ canvas {
     background: rgba(0,0,0,0.2);
     border-radius: 15px;
     padding: 15px;
-    display: none; /* JavaScript буде керувати видимістю */
+    display: none; 
 }
 .menu-section.active {
     display: block;
@@ -244,7 +254,7 @@ canvas {
 }
 
 .scrollable-content {
-    max-height: 25vh; /* Зменшено висоту скролу для вміщення всіх секцій на вкладці "Гра" */
+    max-height: 25vh; 
     overflow-y: auto;
     padding-right: 5px;
 }
