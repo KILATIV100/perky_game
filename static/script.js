@@ -60,7 +60,6 @@ async function requestGyroPermission() {
             if (gameSettings.gyro) window.addEventListener('deviceorientation', handleOrientation);
         } catch (error) { gameSettings.gyro = false; }
     } else if ('DeviceOrientationEvent' in window) {
-        // For non-iOS 13+ devices
         window.addEventListener('deviceorientation', handleOrientation);
     } else {
         gameSettings.gyro = false;
@@ -247,6 +246,7 @@ function startGame(mode) {
     generateClouds();
 
     menuScreen.style.display = 'none';
+    gameOverScreen.style.display = 'none'; // Ховаємо екран "Гру завершено"
     controls.style.display = 'flex';
     updateGameUI();
 
@@ -258,14 +258,12 @@ async function endGame() {
     cancelAnimationFrame(animationId);
     controls.style.display = 'none';
     
-    // Зберегти статистику на сервері
     await saveStatsOnServer();
     
     document.getElementById('finalHeight').textContent = Math.floor(currentHeight);
     document.getElementById('finalCoffee').textContent = currentCoffeeCount;
     gameOverScreen.style.display = 'flex';
     
-    // Перевірити бонуси тільки після завершення гри
     checkBonuses();
 }
 async function saveStatsOnServer() {
@@ -284,7 +282,6 @@ async function saveStatsOnServer() {
         });
         const data = await response.json();
         if (data.success) {
-            // Оновити локальну статистику з сервера
             playerStats = { ...playerStats, ...data.stats };
             updateRecordsDisplay();
         }
@@ -313,7 +310,7 @@ function showBonusPopup({ title, instruction }) {
     bonusPopup.style.display = 'block';
     bonusPopup.querySelector('.close-bonus-btn').onclick = () => hideBonusPopup();
 
-    let timeLeft = 600; // 10 хвилин
+    let timeLeft = 600;
     const timerEl = document.getElementById('bonusTimer');
     bonusTimer = setInterval(() => {
         timeLeft--;
@@ -341,13 +338,11 @@ function generatePlatform() {
     let type = 'normal', color = '#A0522D';
     const rand = Math.random();
 
-    // Зменшена ймовірність спеціальних платформ
     if (rand < 0.10) { type = 'bouncy'; color = '#2ECC71'; } 
     else if (rand < 0.18) { type = 'fragile'; color = '#E74C3C'; }
     
     platforms.push({ x, y, width: 80, height: 15, type, color });
 
-    // Генерувати зерна тільки на звичайних платформах
     if (type === 'normal' && Math.random() < 0.5) {
         coffees.push({ x: x + 40, y: y - 20 });
     }
@@ -376,7 +371,7 @@ function updateGameUI() {
     const newHeight = Math.max(0, -player.y + canvas.height - 100);
     if (newHeight > currentHeight) currentHeight = newHeight;
     heightScoreEl.textContent = `${Math.floor(currentHeight)}м`;
-    coffeeCountEl.textContent = currentCoffeeCount;
+    coffeeCountEl.textContent = `☕ ${currentCoffeeCount}`;
 }
 function updateRecordsDisplay() {
     bestHeightEl.textContent = `${playerStats.max_height}м`;
@@ -394,7 +389,11 @@ function setupEventListeners() {
         btn.addEventListener('click', () => startGame(btn.dataset.mode));
     });
     
-    restartBtn.addEventListener('click', () => startGame(gameMode));
+    restartBtn.addEventListener('click', () => {
+        // Додано ховання екрану завершення гри
+        gameOverScreen.style.display = 'none';
+        startGame(gameMode);
+    });
     menuBtn.addEventListener('click', () => {
         gameState = 'menu';
         gameOverScreen.style.display = 'none';
@@ -462,9 +461,8 @@ async function initializeApp() {
     resizeCanvas();
     setupEventListeners();
     updateGyroToggleUI();
-    if (gameSettings.gyro) requestGyroPermission(); // Запит дозволу при старті
+    if (gameSettings.gyro) requestGyroPermission();
     
-    // Завантажити статистику гравця
     if (playerStats.user_id) {
         try {
             const response = await fetch(`/stats/${playerStats.user_id}`);
@@ -482,4 +480,3 @@ async function initializeApp() {
 }
 
 initializeApp();
-
