@@ -92,7 +92,8 @@ function update() {
     updateCamera();
     updateParticles();
     checkCollisions();
-    if (player.y > camera.y + canvas.height) endGame();
+    // ОНОВЛЕНО: Додано перевірку таймера для режиму "На час"
+    if (player.y > camera.y + canvas.height || (gameMode === 'timed' && gameTimer <= 0)) endGame();
 }
 function updatePlayer() {
     let targetVx = 0;
@@ -150,7 +151,7 @@ function checkCollisions() {
     });
 
     coffees = coffees.filter(coffee => {
-        // Використовуємо більш точну перевірку на зіткнення: квадратний корінь
+        // Використовуємо більш точну перевірку на зіткнення
         const dist = Math.hypot(player.x + player.width / 2 - coffee.x, player.y + player.height / 2 - coffee.y);
         if (dist < player.width / 2 + 5) { // Радіус зіткнення
             currentCoffeeCount++;
@@ -199,8 +200,7 @@ function render() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.font = '24px Arial';
         ctx.textAlign = 'center';
-        // Потрібно відняти camera.y, щоб таймер залишався на екрані, коли камера піднімається
-        ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, camera.y + 40); 
+        ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40); // Потрібно відняти camera.y у функції
     }
 }
 function renderPlayer() {
