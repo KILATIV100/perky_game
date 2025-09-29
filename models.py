@@ -15,3 +15,15 @@ class GameStats(BaseModel):
     # -------------------------------------
     score: int    # Фінальний рахунок (висота)
     collected_beans: int # Кількість зібраних зерен за раунд
+    # kilativ100/perky_game/perky_game-main/models.py (фрагмент)
+
+# ... (імпорти та клас GameStats без змін)
+
+class SkinAction(BaseModel):
+    """
+    Модель для валідації дій з скінами (купівля/активація).
+    """
+    user_id: int
+    skin_id: int
+    action_type: str = Field(..., pattern="^(buy|activate)$") # Дозволяє лише 'buy' або 'activate'
+
