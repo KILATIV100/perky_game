@@ -85,18 +85,27 @@ class Database:
             logger.error(f"Помилка при ініціалізації бази даних: {e}")
 
     def _populate_initial_skins(self, cursor):
-        """Заповнює таблицю скінів початковими даними."""
-        # svg_data - тимчасовий ідентифікатор для JS-логіки
+        """Заповнює таблицю скінів початковими даними, використовуючи 12 скінів."""
+        
+        # Перший скін - Default Robot
         skins_data = [
-            ("Default Robot", 0, True, "default"), 
-            ("Red Hot", 500, False, "red_hot"), 
-            ("Blue Ice", 1000, False, "blue_ice"),
+            ("Default Robot", 0, True, "default_robot.svg"), 
         ]
+
+        # Додаємо 11 додаткових скінів (skin_1.svg до skin_11.svg)
+        # Ціни поступово зростають для стимуляції накопичення зерен
+        base_price = 400
+        for i in range(1, 12):
+            price = base_price + (i * 150) # Ціни від 550 до 2050
+            name = f"Skin #{i}"
+            svg_file = f"skin_{i}.svg"
+            skins_data.append((name, price, False, svg_file))
+        
         cursor.executemany(
             "INSERT INTO skins (name, price, is_default, svg_data) VALUES (?, ?, ?, ?)",
             skins_data
         )
-        logger.info("Початкові скіни додано.")
+        logger.info("Початкові 12 скінів додано.")
 
     def _ensure_default_skin_for_all_users(self, cursor):
         """Гарантує, що кожен користувач має default скін у user_skins."""
