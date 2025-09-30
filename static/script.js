@@ -22,18 +22,14 @@ const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
 const loadingScreen = document.getElementById('loadingScreen');
+const pauseScreen = document.getElementById('pauseScreen'); // ДОДАНО
+const resumeBtn = document.getElementById('resumeBtn'); // ДОДАНО
+const exitBtn = document.getElementById('exitBtn'); // ДОДАНО
 const tabContents = {
     play: document.getElementById('playTab'),
     shop: document.getElementById('shopTab'), 
     settings: document.getElementById('settingsTab')
 };
-
-// --- ДОДАНО: ЕЛЕМЕНТИ ЕКРАНУ ПАУЗИ ---
-const pauseScreen = document.getElementById('pauseScreen');
-const resumeBtn = document.getElementById('resumeBtn');
-const exitBtn = document.getElementById('exitBtn');
-// ------------------------------------
-
 
 // --- Глобальні активи SVG ---
 const assets = {};
@@ -273,6 +269,7 @@ function render() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.font = '24px Arial';
         ctx.textAlign = 'center';
+        // ВИПРАВЛЕНО: Використовуємо gameTimer
         ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40);
     }
 }
@@ -293,6 +290,8 @@ function renderPlayer() {
     const h = player.height; // 60px
 
     // 1. Спроба рендерингу SVG-скіна
+    ctx.imageSmoothingEnabled = false; 
+    
     if (skinImg && skinImg.complete) {
         ctx.drawImage(skinImg, x, y, w, h);
         return; 
@@ -314,7 +313,7 @@ function renderPlayer() {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
     
-    // Очі
+    // Очі (адаптовані під 60x60)
     ctx.fillStyle = eyeColor;
     ctx.fillRect(x + 15, y + 15, 10, 10);
     ctx.fillRect(x + 35, y + 15, 10, 10);
@@ -338,7 +337,7 @@ function renderCoffees() {
 }
 function renderEnemies() {
     enemies.forEach(e => {
-        const img = (e.type === 'virus') ? assets.enemyVirus : assets.enemyBug;
+        const img = (e.type === 'virus') ? assets.enemyVirus : assets.bugImage;
         if (img.complete) {
             ctx.drawImage(img, e.x, e.y, e.width, e.height);
         } else {
@@ -390,6 +389,7 @@ function startGame(mode) {
     // --- ЛОГІКА РЕЖИМІВ ГРИ ---
     if (mode === 'timed') {
         gameSpeedMultiplier = 2; // Прискорення x2 для "На час"
+        gameTimer = 60; // ВИПРАВЛЕНО: Ініціалізація таймера
         const timerInterval = setInterval(() => {
             if (gameState !== 'playing') clearInterval(timerInterval);
             gameTimer--;
@@ -414,7 +414,7 @@ function startGame(mode) {
     // 1. Створення гравця
     player = {
         x: canvas.width / 2 - 30, // ОНОВЛЕНО: Центрування для 60px
-        y: canvas.height - 100, // Використовуємо робочі координати
+        y: canvas.height - 100, 
         width: 60, // ОНОВЛЕНО: ЗБІЛЬШЕНО РОЗМІР ГЕРОЯ
         height: 60, // ОНОВЛЕНО: ЗБІЛЬШЕНО РОЗМІР ГЕРОЯ
         vx: 0, vy: 0,
@@ -672,15 +672,15 @@ function setupEventListeners() {
         menuScreen.style.display = 'flex';
     });
     
-    // --- ДОДАНО: ОБРОБНИК КНОПКИ ПАУЗИ ---
+    // --- ДОДАНО: ОБРОБНИКИ КНОПОК ПАУЗИ ---
     if (pauseBtn) {
         pauseBtn.addEventListener('click', pauseGame);
     }
     if (resumeBtn) {
-        resumeBtn.addEventListener('click', resumeGame); // ПІДКЛЮЧЕННЯ
+        resumeBtn.addEventListener('click', resumeGame); 
     }
     if (exitBtn) {
-        exitBtn.addEventListener('click', exitToMenu); // ПІДКЛЮЧЕННЯ
+        exitBtn.addEventListener('click', exitToMenu); 
     }
     // ------------------------------------
 
