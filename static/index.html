@@ -13,14 +13,13 @@
         
         <div class="ui-overlay">
             <div class="score-display">
-                <div id="gameTimer" style="display: none;">⏳ <span id="timeRemaining">60</span>s</div>
                 <div>☕ <span id="coffeeCount">0</span></div>
                 <div>📏 <span id="heightScore">0</span>m</div>
             </div>
             <div class="records-display" id="recordsDisplay">
                 <div>🏆 Рекорд: <span id="bestHeight">0</span>м</div>
             </div>
-        </div>
+            <button class="pause-btn" id="pauseBtn">||</button> </div>
 
         <div class="controls" id="controls">
             <button class="control-btn" id="leftBtn">←</button>
@@ -82,6 +81,12 @@
             </div>
             <button class="restart-btn" id="restartBtn">🔄 Грати знову</button>
             <button class="restart-btn menu-btn" id="menuBtn">📋 Головне меню</button>
+        </div>
+
+        <div class="pause-screen" id="pauseScreen">
+            <div class="pause-title">Пауза</div>
+            <button class="restart-btn" id="continueBtn">▶️ Продовжити</button>
+            <button class="restart-btn menu-btn" id="exitToMenuBtn">📋 Вийти в меню</button>
         </div>
         
         <div class="bonus-popup" id="bonusPopup"></div>
