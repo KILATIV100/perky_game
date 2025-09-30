@@ -31,6 +31,7 @@ canvas {
     display: block;
     width: 100%;
     height: 100%;
+    /* Стандартний фон, змінюється у JS */
     background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
 }
 
@@ -41,43 +42,46 @@ canvas {
     left: 0;
     width: 100%;
     padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    pointer-events: none; /* Дозволяє клікам проходити крізь контейнер */
+    pointer-events: none;
     z-index: 10;
 }
 
 .score-display {
+    /* ВИПРАВЛЕНО: Розділяємо UI-елементи. Додано відступ для кнопки Паузи. */
     display: flex;
-    gap: 20px;
+    justify-content: space-between;
     font-size: 1.2rem;
     font-weight: bold;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-    background: rgba(0,0,0,0.2);
-    padding: 5px 10px;
-    border-radius: 10px;
+    padding-right: 60px; /* 40px кнопка + 20px відступ */
 }
 
 .records-display {
     position: absolute;
-    top: 55px;
+    top: 50px;
     left: 20px;
     font-size: 0.9rem;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
 }
 
+/* КНОПКА ПАУЗА/МЕНЮ */
 .pause-btn {
-    pointer-events: all; /* Робить кнопку клікабельною */
-    width: 44px;
-    height: 44px;
-    border: none;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: rgba(0,0,0,0.3);
+    background: rgba(255, 255, 255, 0.3);
     color: white;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: none;
     cursor: pointer;
-    display: none; /* Ховаємо початково */
+    line-height: 40px;
+    text-align: center;
+    pointer-events: auto; /* Дозволяє натискання */
+    display: none; /* Спочатку сховано, JS показує під час гри */
 }
 
 /* Кнопки керування */
@@ -110,6 +114,37 @@ canvas {
     background: rgba(255, 255, 255, 0.8);
 }
 
+/* --- ДОДАНО: СТИЛІ ЕКРАНУ ЗАВАНТАЖЕННЯ (Loader) --- */
+.loading-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 50; /* Вище за всі інші елементи */
+    color: white;
+}
+.spinner {
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 5px solid #FFD700; /* Золотий колір */
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+/* ---------------------------------------------------- */
+
+
 /* Головне меню */
 .menu-screen {
     position: absolute;
@@ -118,22 +153,33 @@ canvas {
     width: 100%;
     height: 100%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
+    display: none; /* ВИПРАВЛЕНО: Приховано за замовчуванням */
     flex-direction: column;
     align-items: center;
-    padding: 20px;
+    padding: 10px; 
     z-index: 20;
 }
 
 .menu-header {
     width: 100%;
     text-align: center;
-    margin-bottom: 20px;
-    padding-top: 20px;
+    margin-bottom: 10px;
+    padding-top: 10px;
+    
+    /* ДОДАНО: Центрування елементів в заголовку */
+    display: flex;
+    flex-direction: column; /* Щоб логотип був над заголовком */
+    align-items: center;
+}
+
+.game-logo {
+    width: 60px;   /* ДОДАНО: Розмір логотипу */
+    height: 60px;
+    margin-bottom: 5px; /* ДОДАНО: Відступ між логотипом та текстом */
 }
 
 .game-title {
-    font-size: 2rem;
+    font-size: 1.8rem; /* Зменшення розміру шрифту для кращої сумісності */
     font-weight: bold;
 }
 
@@ -147,20 +193,28 @@ canvas {
     background: rgba(0,0,0,0.2);
     border-radius: 15px;
     padding: 5px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
+    
+    /* ВИПРАВЛЕННЯ ДЛЯ 3 ВКЛАДОК */
+    overflow-x: hidden; 
+    justify-content: space-between; 
 }
 
 .menu-tab {
-    flex: 1;
-    padding: 10px;
+    flex: 1; 
+    min-width: 0; 
+    padding: 8px 5px; 
+    margin-right: 0; 
     border: none;
     background: transparent;
     color: rgba(255,255,255,0.7);
     border-radius: 10px;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.8rem; 
     font-weight: bold;
     transition: background 0.3s;
+    text-align: center;
+    white-space: normal; 
 }
 .menu-tab.active {
     background: rgba(255,255,255,0.2);
@@ -170,15 +224,15 @@ canvas {
 .menu-section {
     background: rgba(0,0,0,0.2);
     border-radius: 15px;
-    padding: 20px;
-    display: none; /* JavaScript буде керувати видимістю */
+    padding: 15px;
+    display: none; 
 }
 .menu-section.active {
     display: block;
 }
 
 .section-header {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: bold;
     margin-bottom: 15px;
     text-align: center;
@@ -187,16 +241,16 @@ canvas {
 .mode-buttons {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    gap: 10px;
 }
 
 .mode-btn {
-    padding: 15px;
+    padding: 12px;
     border: none;
     border-radius: 10px;
     background: rgba(255,255,255,0.9);
     color: #333;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: bold;
     cursor: pointer;
     transition: transform 0.2s;
@@ -210,6 +264,11 @@ canvas {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin-top: 10px;
+}
+.stats-grid div span {
+    font-weight: bold;
+    color: #FFD700;
 }
 
 .setting-item {
@@ -248,7 +307,7 @@ canvas {
 }
 
 .scrollable-content {
-    max-height: 50vh;
+    max-height: 25vh; 
     overflow-y: auto;
     padding-right: 5px;
 }
@@ -256,8 +315,8 @@ canvas {
     padding: 5px 0;
 }
 
-/* Екран завершення гри та екран паузи */
-.game-over-screen, .pause-screen {
+/* Екран завершення гри */
+.game-over-screen {
     position: absolute;
     top: 0;
     left: 0;
@@ -272,7 +331,7 @@ canvas {
     text-align: center;
 }
 
-.game-over-title, .pause-title {
+.game-over-title {
     font-size: 2.5rem;
     margin-bottom: 20px;
 }
@@ -290,7 +349,6 @@ canvas {
     font-weight: bold;
     cursor: pointer;
     margin-top: 10px;
-    width: 250px;
 }
 .restart-btn.menu-btn {
     background: #777;
@@ -321,4 +379,76 @@ canvas {
     background: rgba(0,0,0,0.3);
     color: white;
     cursor: pointer;
+}
+
+/* --- СТИЛІ МАГАЗИНУ --- */
+.beans-balance {
+    text-align: center;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+}
+.beans-balance span {
+    font-weight: bold;
+    color: #FFD700;
+}
+.shop-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+.shop-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.shop-item.item-active {
+    border-color: #FFD700; /* Золота рамка для активного скіна */
+}
+.skin-icon {
+    /* ОНОВЛЕНО: Стилі для контейнера зображення скіна */
+    height: 80px; 
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.shop-skin-img {
+    width: 60px; /* Розмір зображення скіна */
+    height: 60px;
+    object-fit: contain;
+}
+.skin-name-text {
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.skin-btn {
+    width: 100%;
+    padding: 8px 0;
+    border: none;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 5px;
+    white-space: nowrap;
+}
+.buy-btn {
+    background: #4CAF50;
+    color: white;
+}
+.activate-btn {
+    background: #FFD700;
+    color: #333;
+}
+.skin-btn.active {
+    background: #777;
+    color: white;
+    cursor: default;
 }
