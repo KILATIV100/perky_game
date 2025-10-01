@@ -217,18 +217,28 @@ function checkCollisions() {
         return true;
     });
 
+    // ОНОВЛЕНО: Економіка - збираємо менше зерен на початку
+    const beansCollectedThisFrame = [];
     coffees = coffees.filter(coffee => {
-        // Використовуємо більш точну перевірку на зіткнення
         const dist = Math.hypot(player.x + player.width / 2 - coffee.x, player.y + player.height / 2 - coffee.y);
         if (dist < player.width / 2 + 5) { // Радіус зіткнення
-            currentCoffeeCount++;
-            updateGameUI();
+            beansCollectedThisFrame.push(coffee);
             createParticles(coffee.x, coffee.y, '#D2691E');
             vibrate(20);
             return false; // Видалити зерно
         }
         return true;
     });
+    
+    if (beansCollectedThisFrame.length > 0) {
+        // ВИПРАВЛЕНО: Зменшення кількості зерен до 200м
+        let beanValue = 1; // Базова вартість 1
+        if (currentHeight >= 200) beanValue = 2;
+        if (currentHeight >= 500) beanValue = 3; 
+
+        currentCoffeeCount += beansCollectedThisFrame.length * beanValue;
+        updateGameUI();
+    }
 }
 function handlePlatformCollision(platform) {
     if (player.isFallingAfterBounce) return; // Ігнорувати зіткнення відразу після відскопу
@@ -258,7 +268,7 @@ function render() {
     ctx.save();
     ctx.translate(0, -camera.y);
     renderClouds();
-    renderPlatforms(); // ВИПРАВЛЕНО: Функція тепер існує
+    renderPlatforms(); 
     renderCoffees();
     renderEnemies(); 
     renderPlayer(); 
