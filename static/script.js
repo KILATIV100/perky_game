@@ -524,9 +524,12 @@ function showBonusPopup({ title, instruction }) {
     }, 1000);
 }
 function hideBonusPopup() {
-    bonusPopup.style.display = 'none';
     if (bonusTimer) clearInterval(bonusTimer);
+    if (bonusPopup) {
+        bonusPopup.style.display = 'none';
+    }
 }
+
 
 // --- ГЕНЕРАЦІЯ ОБ'ЄКТІВ ---
 function generateInitialPlatforms() {
