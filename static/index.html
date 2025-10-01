@@ -33,14 +33,15 @@
             
             <div class="menu-content">
                 <div class="menu-tabs">
-                    <button class="menu-tab" data-tab="game_progress">🎮 Гра / Прогрес</button>
+                    <button class="menu-tab" data-tab="play">🎮 Гра</button>
+                    <button class="menu-tab" data-tab="progress">📊 Прогрес</button>
+                    <button class="menu-tab" data-tab="social">🏆 Рейтинг</button>
                     <button class="menu-tab active" data-tab="shop">🛒 Магазин</button>
                     <button class="menu-tab" data-tab="settings">⚙️ Налаштування</button>
                 </div>
 
                 <div class="menu-section-container">
-                    
-                    <div class="menu-section" id="game_progressTab">
+                    <div class="menu-section" id="playTab">
                         <div class="section-header"><span>🎯 Режими гри</span></div>
                         <div class="mode-buttons">
                             <button class="mode-btn" data-mode="classic">Класичний</button>
@@ -48,14 +49,18 @@
                             <button class="mode-btn" data-mode="night">Нічний</button>
                             <button class="mode-btn" data-mode="extreme">Екстремальний</button>
                         </div>
-                        
-                        <div class="section-header" style="margin-top: 20px;"><span>📊 Ваша статистика</span></div>
-                        <div id="statsGrid" class="stats-grid"></div>
-                        
-                        <div class="section-header" style="margin-top: 20px;"><span>🏆 Загальний рейтинг</span></div>
-                        <div id="leaderboardContent" class="scrollable-content"></div>
                     </div>
 
+                    <div class="menu-section" id="progressTab">
+                        <div class="section-header"><span>📊 Ваша статистика</span></div>
+                        <div id="statsGrid" class="stats-grid"></div>
+                    </div>
+
+                    <div class="menu-section" id="socialTab">
+                        <div class="section-header"><span>🏆 Загальний рейтинг</span></div>
+                        <div id="leaderboardContent" class="scrollable-content"></div>
+                    </div>
+                    
                     <div class="menu-section active" id="shopTab">
                         <div class="section-header"><span>🛒 Скіни робота</span></div>
                         <p style="text-align: center; margin-bottom: 15px;">Ваш баланс: ☕ <span id="playerBeans">0</span></p>
@@ -72,7 +77,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="menu-section" id="settingsTab">
                          <div class="section-header"><span>⚙️ Налаштування</span></div>
                          <div class="settings-grid">
