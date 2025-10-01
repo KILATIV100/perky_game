@@ -13,10 +13,10 @@ from database import db
 logger = logging.getLogger(__name__)
 
 # --- ДАНІ МАГАЗИНУ ТА КОНТАКТИ ---
-CONTACT_PHONE = "+380 (95) 394 19 00"
-CAFE_MENU_URL = "https://menu.ps.me/ZK6-i-cBzeg" # <--- ВАЖЛИВО: Замініть на реальне посилання
+CONTACT_PHONE = "+380 (95) 394 19 00" # <--- ОНОВЛЕНО
+CAFE_MENU_URL = "https://menu.ps.me/ZK6-i-cBzeg" # <--- ОНОВЛЕНО
 
-CCOFFEE_ITEMS = [
+COFFEE_ITEMS = [ # <--- ОНОВЛЕНО
     {
         "id": "coffee_1", 
         "name": "ZAVARI Santos Blend (100% арабіка)", 
@@ -49,7 +49,7 @@ CCOFFEE_ITEMS = [
     },
 ]
 
-MERCH_ITEMS = [
+MERCH_ITEMS = [ # <--- ОНОВЛЕНО
     {
         "id": "merch_1", 
         "name": "Еко чашка з бамбука 'PerkUP'", 
@@ -87,7 +87,7 @@ class PerkyCoffeeBot:
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обробка команди /start."""
         user = update.effective_user
-        db.save_or_update_user(user.id, user.username, user.first_name)
+        db.save_or_update_user(user.id, user.username, user.first_name) # <--- ВИПРАВЛЕНО
         
         welcome_message = (
             f"Привіт, {user.first_name}! 👋\n\n"
@@ -95,7 +95,7 @@ class PerkyCoffeeBot:
             "Готовий до гри? Просто натисни на кнопку нижче! 👇"
         )
         
-        keyboard = [
+        keyboard = [ # <--- ОНОВЛЕНО
             [InlineKeyboardButton("🎮 Почати гру", web_app=WebAppInfo(url=f"{WEBAPP_URL}/game"))],
             [
                 InlineKeyboardButton("☕ Меню кав'ярні", url=CAFE_MENU_URL),
@@ -130,9 +130,11 @@ class PerkyCoffeeBot:
             await self.show_help(query)
         elif action == 'back_main':
             await self.back_to_main(query)
-        elif action.startswith('shop_cat_'):
-            category = action.split('_')[-1]
-            await self.show_shop_category(query, category)
+        # ОНОВЛЕНА ЛОГІКА ДЛЯ КАТЕГОРІЙ МАГАЗИНУ - ЯВНА ПЕРЕВІРКА
+        elif action == 'shop_cat_coffee':
+            await self.show_shop_category(query, 'coffee')
+        elif action == 'shop_cat_merch':
+            await self.show_shop_category(query, 'merch')
         elif action.startswith('shop_item_'):
             item_id = action.split('_', 2)[-1]
             await self.show_shop_item(query, item_id)
@@ -230,7 +232,7 @@ class PerkyCoffeeBot:
 
     async def show_help(self, query: Update):
         """Показує опис гри та правила отримання бонусів."""
-        help_text = (
+        help_text = ( # <--- ОНОВЛЕНО
             "❓ <b>Правила та Бонуси:</b>\n\n"
             "Керуйте кавовим роботом, стрибайте по платформах і збирайте кавові зерна (☕) на шляху до найвищого рекорду.\n\n"
             "<b>🎯 Основні правила:</b>\n"
