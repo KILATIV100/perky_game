@@ -19,7 +19,7 @@ CAFE_MENU_URL = "https://menu.ps.me/ZK6-i-cBzeg"
 COFFEE_ITEMS = [ 
     {
         "id": "coffee_1", 
-        "name": "Santos Blend (100% арабіка)", # ВИПРАВЛЕНО
+        "name": "Santos Blend (100% арабіка)", 
         "price": "340 грн (200 г) / 1450 грн (1 кг)", 
         "desc": "Кава, що підкорює з першого ковтка! 🌟 **М’яка бразильська арабіка** з горіховим солодким ароматом. Післясмак чорного шоколаду та фруктові нотки. Ідеальний варіант для підзарядження.\n\n*Обсмаження: Середнє | Кислотність: Низька | Тіло: Насичене*",
         "button_name": "Santos Blend (100% арабіка)"
@@ -33,7 +33,7 @@ COFFEE_ITEMS = [
     },
     {
         "id": "coffee_3", 
-        "name": "Ethiopia Yirgacheffe Grade 1 (100% арабіка)", # ВИПРАВЛЕНО
+        "name": "Ethiopia Yirgacheffe Grade 1 (100% арабіка)", 
         "price": "380 грн (200 г)", 
         "desc": "Для любителів ніжної кави з **фруктовими акцентами**. Яскравий аромат жасмину та медової дині. Легкий смак з нотами цитрусу, чорниць, полуниць 🍓🍋, та післясмаком вишні і карамелі.",
         "button_name": "Ethiopia Yirgacheffe Grade 1 (100% арабіка)"
@@ -124,8 +124,8 @@ class PerkyCoffeeBot:
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await update.message.reply_html(welcome_message, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+        # ВИПРАВЛЕНО: Видалено 'parse_mode=ParseMode.HTML'
+        await update.message.reply_html(welcome_message, reply_markup=reply_markup)
 
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обробка натискань на кнопки."""
@@ -170,6 +170,7 @@ class PerkyCoffeeBot:
 
         keyboard = [[InlineKeyboardButton("↩️ Назад", callback_data='back_main')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
+        # ВИПРАВЛЕНО: 'parse_mode=ParseMode.HTML' потрібно лише для edit_message_text
         await query.edit_message_text(stats_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
 
     async def show_leaderboard(self, query: Update):
@@ -189,6 +190,7 @@ class PerkyCoffeeBot:
 
         keyboard = [[InlineKeyboardButton("↩️ Назад", callback_data='back_main')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
+        # ВИПРАВЛЕНО: 'parse_mode=ParseMode.HTML' потрібно лише для edit_message_text
         await query.edit_message_text(leaderboard_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
         
     async def show_shop(self, query: Update):
@@ -203,6 +205,7 @@ class PerkyCoffeeBot:
             [InlineKeyboardButton("↩️ Назад", callback_data='back_main')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
+        # ВИПРАВЛЕНО: 'parse_mode=ParseMode.HTML' потрібно лише для edit_message_text
         await query.edit_message_text(shop_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
 
     async def show_shop_category(self, query: Update, category: str):
@@ -221,7 +224,7 @@ class PerkyCoffeeBot:
             
         keyboard.append([InlineKeyboardButton("↩️ Назад до магазину", callback_data='shop')])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
+        # ВИПРАВЛЕНО: 'parse_mode=ParseMode.HTML' потрібно лише для edit_message_text
         await query.edit_message_text(shop_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
         
     async def show_shop_item(self, query: Update, item_id: str):
@@ -243,7 +246,7 @@ class PerkyCoffeeBot:
         
         keyboard = [[InlineKeyboardButton("↩️ Назад до категорії", callback_data=f"shop_cat_{item_category}")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
+        # ВИПРАВЛЕНО: 'parse_mode=ParseMode.HTML' потрібно лише для edit_message_text
         await query.edit_message_text(item_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
 
 
@@ -265,6 +268,7 @@ class PerkyCoffeeBot:
         )
         keyboard = [[InlineKeyboardButton("↩️ Назад", callback_data='back_main')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
+        # ВИПРАВЛЕНО: 'parse_mode=ParseMode.HTML' потрібно лише для edit_message_text
         await query.edit_message_text(help_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
 
 
@@ -297,6 +301,7 @@ class PerkyCoffeeBot:
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
+        # ВИПРАВЛЕНО: Видалено 'parse_mode=ParseMode.HTML'
         await query.edit_message_text(welcome_message, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
 
 # Створюємо єдиний екземпляр бота
