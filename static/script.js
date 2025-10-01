@@ -22,14 +22,15 @@ const controls = document.getElementById('controls');
 const menuTabs = document.querySelectorAll('.menu-tab');
 const shopContent = document.getElementById('shopContent'); 
 const loadingScreen = document.getElementById('loadingScreen');
-const pauseScreen = document.getElementById('pauseScreen'); // ДОДАНО
-const resumeBtn = document.getElementById('resumeBtn'); // ДОДАНО
-const exitBtn = document.getElementById('exitBtn'); // ДОДАНО
 const tabContents = {
     play: document.getElementById('playTab'),
     shop: document.getElementById('shopTab'), 
     settings: document.getElementById('settingsTab')
 };
+const pauseScreen = document.getElementById('pauseScreen');
+const resumeBtn = document.getElementById('resumeBtn');
+const exitBtn = document.getElementById('exitBtn');
+
 
 // --- Глобальні активи SVG ---
 const assets = {};
@@ -269,7 +270,6 @@ function render() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.font = '24px Arial';
         ctx.textAlign = 'center';
-        // ВИПРАВЛЕНО: Використовуємо gameTimer
         ctx.fillText(`⏰ ${gameTimer}`, canvas.width / 2, 40);
     }
 }
@@ -290,7 +290,7 @@ function renderPlayer() {
     const h = player.height; // 60px
 
     // 1. Спроба рендерингу SVG-скіна
-    ctx.imageSmoothingEnabled = false; 
+    ctx.imageSmoothingEnabled = false; // ВИМКНЕННЯ ЗГЛАДЖУВАННЯ
     
     if (skinImg && skinImg.complete) {
         ctx.drawImage(skinImg, x, y, w, h);
@@ -414,7 +414,7 @@ function startGame(mode) {
     // 1. Створення гравця
     player = {
         x: canvas.width / 2 - 30, // ОНОВЛЕНО: Центрування для 60px
-        y: canvas.height - 100, 
+        y: canvas.height - 100, // Використовуємо робочі координати
         width: 60, // ОНОВЛЕНО: ЗБІЛЬШЕНО РОЗМІР ГЕРОЯ
         height: 60, // ОНОВЛЕНО: ЗБІЛЬШЕНО РОЗМІР ГЕРОЯ
         vx: 0, vy: 0,
@@ -624,13 +624,13 @@ function pauseGame() {
     cancelAnimationFrame(animationId);
     controls.style.display = 'none';
     pauseBtn.style.display = 'none';
-    pauseScreen.style.display = 'flex'; // Показати екран паузи
+    document.getElementById('pauseScreen').style.display = 'flex'; // Показати екран паузи
 }
 
 function resumeGame() {
     if (gameState !== 'paused') return;
     gameState = 'playing';
-    pauseScreen.style.display = 'none'; // Приховати екран паузи
+    document.getElementById('pauseScreen').style.display = 'none'; // Приховати екран паузи
     controls.style.display = (gameSettings.gyro ? 'none' : 'flex');
     pauseBtn.style.display = 'block';
     gameLoop(); // Продовжити цикл
@@ -639,11 +639,14 @@ function resumeGame() {
 function exitToMenu() {
     // Якщо виходимо з паузи, вважаємо гру завершеною для збереження результатів
     if (gameState === 'paused') {
-        endGame();
+        // Оскільки ми в паузі, можна просто перейти до меню
+        gameState = 'menu';
+        document.getElementById('pauseScreen').style.display = 'none';
+        menuScreen.style.display = 'flex';
+    } else {
+        gameState = 'menu';
+        menuScreen.style.display = 'flex';
     }
-    gameState = 'menu';
-    pauseScreen.style.display = 'none';
-    menuScreen.style.display = 'flex';
 }
 
 function setupEventListeners() {
